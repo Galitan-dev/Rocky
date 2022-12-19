@@ -1,0 +1,13 @@
+.data
+hello: .asciiz "Hello World"
+
+.code
+load $1 #10
+load $2 #0
+load $3 #1
+
+load $4 #80
+    prts @hello
+    add $2 $3 $2
+    lt $2 $1 $0
+jeq $4

@@ -1,0 +1,9 @@
+name: rocky
+version: "0.0.1"
+author: Galitan-dev <galitan.dev@gmail.com>
+about: Interpreter for the Rocky language
+args:
+    - INPUT_FILE:
+        help: Path to the .iasm or .ir file to run
+        required: false
+        index: 1
