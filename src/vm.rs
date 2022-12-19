@@ -1,6 +1,25 @@
+use uuid::Uuid;
 use crate::{instruction::Opcode, assembler::PIE_HEADER_PREFIX};
+use chrono::prelude::*;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
+pub enum VMEventType {
+    Start,
+    GracefulStop {
+        code: u32
+    },
+    Crash
+}
+
+#[allow(unused)]
+#[derive(Clone, Debug)]
+pub struct VMEvent {
+    event: VMEventType,
+    at: DateTime<Utc>,
+    application_id: Uuid,
+}
+
+#[derive(Debug, Clone)]
 pub struct VM {
     pub registers: [i32; 32],
     pub pc: usize,
@@ -9,28 +28,59 @@ pub struct VM {
     heap: Vec<u8>,
     remainder: u32,
     equal_flag: bool,
+    id: Uuid,
+    events: Vec<VMEvent>
 }
 
 impl VM {
     pub fn new() -> Self {
         Self {
             registers: [0; 32],
+            remainder: 0,
+            equal_flag: false,
             pc: 64,
             program: Vec::new(),
             ro_data: Vec::new(),
             heap: Vec::new(),
-            remainder: 0,
-            equal_flag: false,
+            events: Vec::new(),
+            id: Uuid::new_v4(),
         }
     }
 
     // Loops as long as instructions can be executed.
-    pub fn run(&mut self) {
+    pub fn run(&mut self) -> Vec<VMEvent> {
+        self.events.push(VMEvent {
+            event: VMEventType::Start, 
+            at: Utc::now(), 
+            application_id: self.id.clone()
+        });
+
         if !self.verify_header() {
-            panic!("Header was incorrect");
+            self.events.push(VMEvent {
+                event: VMEventType::Crash, 
+                at: Utc::now(),
+                application_id: self.id.clone()
+            });
+            println!("Header was incorrect");
+            return self.events.clone();
         }
 
-        while self.execute_instruction() {};
+        self.pc = 64;
+
+        let mut is_done = None;
+        while is_done.is_none() {
+            is_done = self.execute_instruction();
+        }
+
+        self.events.push(VMEvent {
+            event: VMEventType::GracefulStop { 
+                code: is_done.unwrap() 
+            }, 
+            at: Utc::now(),
+            application_id: self.id.clone()
+        });
+
+        self.events.clone()
     }
 
     // Executes one instruction. Meant to allow for more controlled execution of the VM
@@ -38,16 +88,16 @@ impl VM {
         self.execute_instruction();
     }
 
-    fn execute_instruction(&mut self) -> bool {
+    fn execute_instruction(&mut self) -> Option<u32> {
         if self.pc >= self.program.len() {
-            return false;
+            return Some(1);
         }
         
         let opcode = self.decode_opcode();
         match opcode {
             Opcode::HLT => {
                 println!("HLT encountered");
-                return false;
+                return Some(0);
             },
             Opcode::LOAD => {
                 let register = self.next_8_bits() as usize;
@@ -148,14 +198,14 @@ impl VM {
                     Ok(s) => { println!("{}", s); }
                     Err(e) => { println!("Error decoding string for prts instruction: {:#?}", e) }
                 };
-            }
-            _ => {
-                println!("Unknown Opcode: {opcode:?}");
-                return false;
+            },
+            Opcode::IGL => {
+                println!("Illegal instruction encountered");
+                return Some(1);
             }
         }
 
-        true
+        None
     }
 
     fn decode_opcode(&mut self) -> Opcode {
@@ -443,7 +493,7 @@ mod test {
                 assert_eq!(test_vm.pc, 68);
                 test_vm.equal_flag = false;
                 test_vm.run_once();
-                assert_eq!(test_vm.pc,70);
+                assert_eq!(test_vm.pc, 70);
             }
 
         }

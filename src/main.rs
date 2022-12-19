@@ -1,17 +1,18 @@
 #[macro_use]
 extern crate nom;
-#[macro_use]
 extern crate clap;
+extern crate uuid;
+extern crate chrono;
 
 use std::{path::Path, fs::File, io::Read};
-use clap::App;
+use clap::{App, load_yaml};
 use repl::{REPL, REPLMode};
 
 pub mod vm;
 pub mod instruction;
 pub mod repl;
 pub mod assembler;
-
+pub mod scheduler;
 
 fn main() {
     let yaml = load_yaml!("cli.yml");
@@ -27,11 +28,19 @@ fn main() {
             match program {
                 Ok(p) => {
                     vm.add_bytes(p);
-                    vm.run();
+                    let events = vm.run();
+                    println!("VM Events");
+                    println!("--------------------------");
+                    for event in &events {
+                        println!("{:#?}", event);
+                    };
                     std::process::exit(0);
                 },
                 Err(errors) => {
-                    println!("{errors:?}");
+                    println!("Encountered {} assembler error(s):", errors.len());
+                    for error in errors {
+                        println!("{error}");
+                    }
                 }
             }
         },

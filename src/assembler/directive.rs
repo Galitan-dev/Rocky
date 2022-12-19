@@ -1,5 +1,4 @@
 use nom::{alpha1, types::CompleteStr};
-
 use super::{Token, instruction::AssemblerInstruction, operand::operand, label::label_declaration};
 
 named!(directive_declaration<CompleteStr, Token>,
