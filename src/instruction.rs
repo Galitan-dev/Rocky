@@ -20,6 +20,8 @@ pub enum Opcode {
     JEQ,
     ALOC,
     PRTS,
+    SLP,
+    SLPS,
     IGL,
 }
 
@@ -44,6 +46,8 @@ impl From<u8> for Opcode {
             15 => Opcode::JEQ,
             16 => Opcode::ALOC,
             17 => Opcode::PRTS,
+            18 => Opcode::SLP,
+            19 => Opcode::SLPS,
             _ => Opcode::IGL
         }
     }
@@ -63,13 +67,20 @@ impl<'a> From<CompleteStr<'a>> for Opcode {
             CompleteStr("jmpb") => Opcode::JMPB,
             CompleteStr("eq") => Opcode::EQ,
             CompleteStr("neq") => Opcode::NEQ,
+            CompleteStr("gtq") => Opcode::GTQ,
             CompleteStr("gte") => Opcode::GTQ,
             CompleteStr("gt") => Opcode::GT,
+            CompleteStr("ltq") => Opcode::LTQ,
             CompleteStr("lte") => Opcode::LTQ,
             CompleteStr("lt") => Opcode::LT,
             CompleteStr("jeq") => Opcode::JEQ,
+            CompleteStr("jmpe") => Opcode::JEQ,
             CompleteStr("aloc") => Opcode::ALOC,
             CompleteStr("prts") => Opcode::PRTS,
+            CompleteStr("slp") => Opcode::SLP,
+            CompleteStr("wait") => Opcode::SLP,
+            CompleteStr("slps") => Opcode::SLPS,
+            CompleteStr("waits") => Opcode::SLP,
             _ => Opcode::IGL,
         }
     }

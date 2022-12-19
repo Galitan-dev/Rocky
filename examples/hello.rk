@@ -5,9 +5,12 @@ hello: .asciiz "Hello World"
 load $1 #10
 load $2 #0
 load $3 #1
+load $4 #30
 
-load $4 #80
+load $5 #84
     prts @hello
     add $2 $3 $2
+    mul $2 $4 $6
+    slp $6
     lt $2 $1 $0
-jeq $4
+jeq $5

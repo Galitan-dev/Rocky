@@ -1,6 +1,7 @@
+use std::{thread, time::Duration};
+use chrono::{Utc, DateTime};
 use uuid::Uuid;
 use crate::{instruction::Opcode, assembler::PIE_HEADER_PREFIX};
-use chrono::prelude::*;
 
 #[derive(Clone, Debug)]
 pub enum VMEventType {
@@ -198,6 +199,16 @@ impl VM {
                     Ok(s) => { println!("{}", s); }
                     Err(e) => { println!("Error decoding string for prts instruction: {:#?}", e) }
                 };
+            },
+            Opcode::SLP => {
+                let register = self.next_8_bits() as usize;
+                let milliseconds = self.registers[register];
+                thread::sleep(Duration::from_millis(milliseconds as u64));
+            },
+            Opcode::SLPS => {
+                let register = self.next_8_bits() as usize;
+                let seconds = self.registers[register];
+                thread::sleep(Duration::from_secs(seconds as u64));
             },
             Opcode::IGL => {
                 println!("Illegal instruction encountered");
@@ -516,6 +527,33 @@ mod test {
             test_vm.program = prepend_header(test_vm.program);
             test_vm.run_once();
         }    
+
+        mod time {
+            use super::*;
+
+            #[test]
+            fn test_slp_opcode() {
+                let mut test_vm = VM::new();
+                test_vm.registers[0] = 100;
+                test_vm.program = vec![18, 0];
+                test_vm.program = prepend_header(test_vm.program);
+                let start = Utc::now().timestamp_millis();
+                test_vm.run_once();
+                assert!(Utc::now().timestamp_millis() - start >= 100);
+            }
+
+
+            #[test]
+            fn test_slps_opcode() {
+                let mut test_vm = VM::new();
+                test_vm.registers[0] = 1;
+                test_vm.program = vec![19, 0];
+                test_vm.program = prepend_header(test_vm.program);
+                let start = Utc::now().timestamp_millis();
+                test_vm.run_once();
+                assert!(Utc::now().timestamp_millis() - start >= 1000);
+            }
+        }
 
     }
 

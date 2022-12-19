@@ -66,6 +66,7 @@ impl Assembler {
         match program(CompleteStr(raw)) {
             Ok((remainder, program)) => {
                 if remainder != CompleteStr("") {
+                    println!("{remainder}");
                     return Err(vec![AssemblerError::UnterminatedProgram]);
                 }
 
