@@ -1,7 +1,7 @@
 use std::{io::{Write, self, Read}, num::ParseIntError, path::Path, fs::File};
 use nom::types::CompleteStr;
 
-use crate::{vm::VM, assembler::{program::program, symbols::SymbolTable, Assembler}, scheduler::Scheduler};
+use crate::{vm::VM, assembler::{program_parser::program, symbols::SymbolTable, Assembler}, scheduler::Scheduler};
 
 pub enum REPLMode {
     Hexadecimal,

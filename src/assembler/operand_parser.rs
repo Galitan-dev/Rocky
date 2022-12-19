@@ -1,5 +1,5 @@
 use nom::{types::CompleteStr, digit};
-use super::{Token, register::register, label::label_usage};
+use super::{Token, register_parser::register, label_parser::label_usage};
 
 named!(pub operand<CompleteStr, Token>,
     alt!(

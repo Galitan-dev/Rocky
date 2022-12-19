@@ -2,15 +2,15 @@ use nom::types::CompleteStr;
 
 use crate::instruction::Opcode;
 
-use self::{program::{program, Program}, symbols::{SymbolTable, SymbolType, Symbol}, error::AssemblerError, instruction::AssemblerInstruction};
+use self::{program_parser::{program, Program}, symbols::{SymbolTable, SymbolType, Symbol}, error::AssemblerError, instruction_parser::AssemblerInstruction};
 
-pub mod opcode;
-pub mod operand;
-pub mod register;
-pub mod instruction;
-pub mod program;
-pub mod directive;
-pub mod label;
+pub mod opcode_parser;
+pub mod operand_parser;
+pub mod register_parser;
+pub mod instruction_parser;
+pub mod program_parser;
+pub mod directive_parser;
+pub mod label_parser;
 pub mod symbols;
 pub mod error;
 

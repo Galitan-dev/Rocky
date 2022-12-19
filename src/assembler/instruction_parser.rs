@@ -1,5 +1,5 @@
 use nom::{types::CompleteStr};
-use super::{Token, opcode::opcode, operand::operand, label::label_declaration, directive::directive, symbols::SymbolTable};
+use super::{Token, opcode_parser::opcode, operand_parser::operand, label_parser::label_declaration, directive_parser::directive, symbols::SymbolTable};
 
 
 #[derive(Debug, PartialEq)]

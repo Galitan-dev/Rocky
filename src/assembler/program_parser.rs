@@ -1,5 +1,5 @@
 use nom::types::CompleteStr;
-use super::{instruction::{AssemblerInstruction, instruction}, symbols::SymbolTable};
+use super::{instruction_parser::{AssemblerInstruction, instruction}, symbols::SymbolTable};
 
 #[derive(Debug, PartialEq)]
 pub struct Program {
