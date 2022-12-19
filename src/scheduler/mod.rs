@@ -1,4 +1,4 @@
-use std::thread;
+use std::{thread, io::{self, Write}};
 use crate::vm::{VM, VMEvent};
 
 #[allow(unused)]
@@ -19,11 +19,14 @@ impl Scheduler {
     pub fn get_thread(&self, mut vm: VM) -> thread::JoinHandle<Vec<VMEvent>> {
         thread::spawn(move || {
             let events = vm.run();
+            println!("--------------------------");
             println!("VM Events");
             println!("--------------------------");
             for event in &events {
                 println!("{:#?}", event);
             };
+            print!(">>> ");
+            io::stdout().flush().expect("Unable to flush stdout");
             events
         })
     }

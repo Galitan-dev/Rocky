@@ -1,4 +1,3 @@
-
 #[allow(unused)]
 #[derive(Debug)]
 pub struct Symbol {
@@ -24,13 +23,13 @@ pub enum SymbolType {
 
 #[derive(Debug)]
 pub struct SymbolTable {
-    symbols: Vec<Symbol>
+    pub symbols: Vec<Symbol>
 }
 
 impl SymbolTable {
     pub fn new() -> SymbolTable {
         SymbolTable{
-            symbols: vec![]
+            symbols: Vec::new()
         }
     }
 
