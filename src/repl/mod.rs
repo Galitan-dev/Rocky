@@ -1,10 +1,12 @@
-use std::{io::{Write, self, Read}, num::ParseIntError, path::Path, fs::File};
+use std::{io::Read, num::ParseIntError, path::Path, fs::File};
 use nom::types::CompleteStr;
+use rustyline::{Editor, error::ReadlineError};
 use crate::{vm::VM, assembler::{program_parser::program, symbols::SymbolTable, Assembler}, scheduler::Scheduler};
 
-use self::command_parser::CommandParser;
+use self::{command_parser::CommandParser, hinter::{RkHinter, rk_hints}};
 
 pub mod command_parser;
+pub mod hinter;
 
 pub enum REPLMode {
     Hexadecimal,
@@ -12,81 +14,93 @@ pub enum REPLMode {
 }
 
 pub struct REPL {
-    command_buffer: Vec<String>,
     mode: REPLMode,
     vm: VM,
     asm: Assembler,
     scheduler: Scheduler,
+    rl: Editor<RkHinter>,
+    helper: RkHinter,
 }
 
 impl REPL {
-    pub fn new(mode: REPLMode) -> REPL {
-        REPL {
-            command_buffer: Vec::new(),
+    pub fn new(mode: REPLMode) -> Result<Self, ReadlineError> {
+        Ok(Self {
             mode,
             vm: VM::new(),
             asm: Assembler::new(),
             scheduler: Scheduler::new(),
-        }
+            rl: Editor::new()?,
+            helper: RkHinter {
+                hints: rk_hints()
+            }
+        })
     }
 
     pub fn run(&mut self) {
         println!("Welcome to Rocky! Let's be nerds!");
+        
+        self.rl.set_helper(Some(self.helper.clone()));
+        self.rl.load_history("history.txt").ok();
+
         loop {
-            let mut buffer = String::new();
-    
-            let stdin = io::stdin();
-    
-            print!(">>> ");
-            io::stdout().flush().expect("Unable to flush stdout");
-    
-            stdin
-            .read_line(&mut buffer)
-            .expect("Unable to read line from user");
-
-            let historical_copy = buffer.clone();
-            self.command_buffer.push(historical_copy);
-
-            if buffer.starts_with("!") {
-                self.execute_command(&buffer);
-            } else {
-                match self.mode {
-                    REPLMode::Hexadecimal => {
-                        let results = Self::parse_hex(&buffer);
-                        match results {
-                            Ok(bytes) => {
-                                for byte in bytes {
-                                    self.vm.add_byte(byte)
-                                }
-                            },
-                            Err(_e) => {
-                                println!("Unable to decode hex string. Please enter 4 groups of 2 hex characters.")
-                            }
-                        };
-                    },
-                    REPLMode::Assembly => {
-                        let parsed_program = program(CompleteStr(&buffer));
-                        if !parsed_program.is_ok() {
-                            println!("Unable to parse input");
-                            continue;
-                        }
-                        let (_, result) = parsed_program.unwrap();
-                        let bytecode = result.to_bytes(&SymbolTable::new());
-                        for byte in bytecode {
-                            self.vm.add_byte(byte);
+            match self.rl.readline(">>> ") {
+                Ok(line) => {
+                    self.rl.add_history_entry(&line);
+                    if line.starts_with("!") {
+                        self.execute_command(&line);
+                    } else {
+                        match self.mode{
+                            REPLMode::Hexadecimal => self.execute_hexadecimal(&line),
+                            REPLMode::Assembly => self.execute_assembly(&line),
                         }
                     }
-                };
-                self.vm.run_once();
+                },
+                Err(ReadlineError::Interrupted) => {
+                    println!("(To quit, press Ctrl+D or type !quit)");
+                },
+                Err(ReadlineError::Eof) => {
+                    self.execute_command("!quit");
+                },
+                Err(err) => {
+                    println!("Error: {:?}", err);
+                    break
+                }
             }
         }
+    }
+
+    fn execute_assembly(&mut self, assembly: &str) {
+        let parsed_program = program(CompleteStr(assembly));
+        if !parsed_program.is_ok() {
+            println!("Unable to parse input");
+        }
+        let (_, result) = parsed_program.unwrap();
+        let bytecode = result.to_bytes(&SymbolTable::new());
+        for byte in bytecode {
+            self.vm.add_byte(byte);
+        }
+        self.vm.run_once();
+    }
+
+    fn execute_hexadecimal(&mut self, hexadecimal: &str) {
+        let results = Self::parse_hex(hexadecimal);
+        match results {
+            Ok(bytes) => {
+                for byte in bytes {
+                    self.vm.add_byte(byte)
+                }
+                self.vm.run_once();
+            },
+            Err(_e) => {
+                println!("Unable to decode hex string. Please enter 4 groups of 2 hex characters.")
+            }
+        };
     }
 
     fn execute_command(&mut self, input: &str) {
         let args = CommandParser::tokenize(input);
         match args[0] {
             "!quit" => self.quit(&args[1..]),
-            "!history" => self.history(&args[1..]),
             "!program" => self.program(&args[1..]),
             "!clear_program" => self.clear_program(&args[1..]),
             "!clear_registers" => self.clear_registers(&args[1..]),
@@ -98,15 +112,10 @@ impl REPL {
         };
     }
 
-    fn quit(&self, _args: &[&str]) {
+    fn quit(&mut self, _args: &[&str]) {
         println!("Bye! Have a good rest!");
+        self.rl.save_history("history.txt").ok();
         std::process::exit(0);
-    }
-
-    fn history(&self, _args: &[&str]) {
-        for command in &self.command_buffer {
-            print!("{command}");
-        }
     }
 
     fn program(&self, _args: &[&str]) {

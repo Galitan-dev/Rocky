@@ -10,3 +10,6 @@ chrono = "0.4.23"
 clap = { version = "2.34.0", features = ["yaml"] }
 nom = "4.2.3"
 uuid = { version = "0.8.2", features = ["v4"] }
+rustyline = { version = "10.0.0", features = ["case_insensitive_history_search"] }
+rustyline-derive = { version = "0.7.0" }
+colored = "2.0.0"
