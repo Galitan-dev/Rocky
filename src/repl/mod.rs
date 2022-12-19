@@ -124,7 +124,6 @@ impl REPL {
                             };
                         },
                         REPLMode::Assembly => {
-                    
                             let parsed_program = program(CompleteStr(buffer));
                             if !parsed_program.is_ok() {
                                 println!("Unable to parse input");
