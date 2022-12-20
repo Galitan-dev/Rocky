@@ -50,4 +50,3 @@ impl Error for AssemblerError {
         }
     }
 }
-

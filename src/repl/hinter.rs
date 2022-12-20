@@ -1,8 +1,8 @@
-use std::collections::HashSet;
+use colored::Colorize;
 use rustyline::hint::{Hint, Hinter};
 use rustyline::Context;
 use rustyline_derive::{Completer, Helper, Highlighter, Validator};
-use colored::Colorize;
+use std::collections::HashSet;
 
 #[derive(Completer, Helper, Validator, Highlighter, Clone)]
 pub struct RkHinter {
@@ -78,7 +78,10 @@ pub fn rk_hints() -> HashSet<CommandHint> {
     set.insert(CommandHint::new("!clear_registers", "!clear_registers"));
     set.insert(CommandHint::new("!registers", "!registers"));
     set.insert(CommandHint::new("!symbols", "!symbols"));
-    set.insert(CommandHint::new("!load_file path/to/file.rk", "!load_file "));
+    set.insert(CommandHint::new(
+        "!load_file path/to/file.rk",
+        "!load_file ",
+    ));
     set.insert(CommandHint::new("!spawn path/to/file.rk", "!spawn "));
     set
 }

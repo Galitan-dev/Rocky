@@ -1,5 +1,3 @@
-use nom::types::CompleteStr;
-
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum Opcode {
     HLT,
@@ -48,39 +46,39 @@ impl From<u8> for Opcode {
             17 => Opcode::PRTS,
             18 => Opcode::SLP,
             19 => Opcode::SLPS,
-            _ => Opcode::IGL
+            _ => Opcode::IGL,
         }
     }
 }
 
-impl<'a> From<CompleteStr<'a>> for Opcode {
-    fn from(v: CompleteStr<'a>) -> Self {
-        match &v {
-            CompleteStr("load") => Opcode::LOAD,
-            CompleteStr("add") => Opcode::ADD,
-            CompleteStr("sub") => Opcode::SUB,
-            CompleteStr("mul") => Opcode::MUL,
-            CompleteStr("div") => Opcode::DIV,
-            CompleteStr("hlt") => Opcode::HLT,
-            CompleteStr("jmp") => Opcode::JMP,
-            CompleteStr("jmpf") => Opcode::JMPF,
-            CompleteStr("jmpb") => Opcode::JMPB,
-            CompleteStr("eq") => Opcode::EQ,
-            CompleteStr("neq") => Opcode::NEQ,
-            CompleteStr("gtq") => Opcode::GTQ,
-            CompleteStr("gte") => Opcode::GTQ,
-            CompleteStr("gt") => Opcode::GT,
-            CompleteStr("ltq") => Opcode::LTQ,
-            CompleteStr("lte") => Opcode::LTQ,
-            CompleteStr("lt") => Opcode::LT,
-            CompleteStr("jeq") => Opcode::JEQ,
-            CompleteStr("jmpe") => Opcode::JEQ,
-            CompleteStr("aloc") => Opcode::ALOC,
-            CompleteStr("prts") => Opcode::PRTS,
-            CompleteStr("slp") => Opcode::SLP,
-            CompleteStr("wait") => Opcode::SLP,
-            CompleteStr("slps") => Opcode::SLPS,
-            CompleteStr("waits") => Opcode::SLP,
+impl From<String> for Opcode {
+    fn from(v: String) -> Self {
+        match v.as_str() {
+            "load" => Opcode::LOAD,
+            "add" => Opcode::ADD,
+            "sub" => Opcode::SUB,
+            "mul" => Opcode::MUL,
+            "div" => Opcode::DIV,
+            "hlt" => Opcode::HLT,
+            "jmp" => Opcode::JMP,
+            "jmpf" => Opcode::JMPF,
+            "jmpb" => Opcode::JMPB,
+            "eq" => Opcode::EQ,
+            "neq" => Opcode::NEQ,
+            "gtq" => Opcode::GTQ,
+            "gte" => Opcode::GTQ,
+            "gt" => Opcode::GT,
+            "ltq" => Opcode::LTQ,
+            "lte" => Opcode::LTQ,
+            "lt" => Opcode::LT,
+            "jeq" => Opcode::JEQ,
+            "jmpe" => Opcode::JEQ,
+            "aloc" => Opcode::ALOC,
+            "prts" => Opcode::PRTS,
+            "slp" => Opcode::SLP,
+            "wait" => Opcode::SLP,
+            "slps" => Opcode::SLPS,
+            "waits" => Opcode::SLP,
             _ => Opcode::IGL,
         }
     }
@@ -88,21 +86,18 @@ impl<'a> From<CompleteStr<'a>> for Opcode {
 
 #[derive(Debug, PartialEq)]
 pub struct Instruction {
-    opcode: Opcode
+    opcode: Opcode,
 }
 
 impl Instruction {
     pub fn new(opcode: Opcode) -> Self {
-        Self {
-            opcode: opcode
-        }
-    }   
+        Self { opcode: opcode }
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
 
     #[test]
     fn test_create_hlt() {
@@ -118,9 +113,9 @@ mod tests {
 
     #[test]
     fn test_str_to_opcode() {
-        let opcode = Opcode::from(CompleteStr("load"));
+        let opcode = Opcode::from("load".to_owned());
         assert_eq!(opcode, Opcode::LOAD);
-        let opcode = Opcode::from(CompleteStr("illegal"));
+        let opcode = Opcode::from("illegal".to_owned());
         assert_eq!(opcode, Opcode::IGL);
     }
 }

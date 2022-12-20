@@ -1,9 +1,13 @@
-use nom::types::CompleteStr;
-use super::{instruction_parser::{AssemblerInstruction, instruction}, symbols::SymbolTable};
+use nom::{combinator::map, error::VerboseError, multi::many1, IResult};
+
+use super::{
+    instruction_parser::{instruction, AssemblerInstruction},
+    symbols::SymbolTable,
+};
 
 #[derive(Debug, PartialEq)]
 pub struct Program {
-    pub instructions: Vec<AssemblerInstruction>
+    pub instructions: Vec<AssemblerInstruction>,
 }
 
 impl Program {
@@ -15,17 +19,12 @@ impl Program {
         program
     }
 }
-
-named!(pub program<CompleteStr, Program>,
-    do_parse!(
-        instructions: many1!(instruction) >>
-        (
-            Program {
-                instructions: instructions
-            }
-        )
-    )
-);
+pub fn program<'a>(i: &'a str) -> IResult<&'a str, Program, VerboseError<&'a str>> {
+    map(
+        many1(instruction),
+        |instructions: Vec<AssemblerInstruction>| Program { instructions },
+    )(i)
+}
 
 #[cfg(test)]
 mod test {
@@ -33,16 +32,16 @@ mod test {
 
     #[test]
     fn test_parse_program() {
-        let result = program(CompleteStr("load $0 #100\n"));
+        let result = program("load $0 #100\n");
         assert_eq!(result.is_ok(), true);
         let (leftover, p) = result.unwrap();
-        assert_eq!(leftover, CompleteStr(""));
+        assert_eq!(leftover, "");
         assert_eq!(p.instructions.len(), 1);
     }
-    
+
     #[test]
     fn test_program_to_bytes() {
-        let result = program(CompleteStr("load $0 #100\n"));
+        let result = program("load $0 #100\n");
         assert_eq!(result.is_ok(), true);
         let (_, program) = result.unwrap();
         let bytecode = program.to_bytes(&SymbolTable::new());
@@ -52,9 +51,8 @@ mod test {
 
     #[test]
     fn test_complete_program() {
-        let test_program = CompleteStr(".data\nhello: .asciiz 'Hello everyone!'\n.code\nhlt");
+        let test_program = ".data\nhello: .asciiz 'Hello everyone!'\n.code\nhlt";
         let result = program(test_program);
         assert_eq!(result.is_ok(), true);
     }
-
 }

@@ -1,55 +1,37 @@
-use nom::{types::CompleteStr, digit};
-use super::{Token, register_parser::register, label_parser::label_usage};
+use super::{label_parser::label_usage, register_parser::register, utils::ws, Token};
+use nom::{
+    branch::alt,
+    bytes::complete::{tag, take_until1},
+    character::complete::digit1,
+    combinator::map,
+    error::VerboseError,
+    sequence::{delimited, preceded},
+    IResult,
+};
 
-named!(pub operand<CompleteStr, Token>,
-    alt!(
-        integer_operand |
-        register |
-        label_usage |
-        rkstring
-    )
-);
+pub fn operand<'a>(i: &'a str) -> IResult<&'a str, Token, VerboseError<&'a str>> {
+    ws(alt((integer_operand, rkstring, register, label_usage)))(i)
+}
 
-named!(integer_operand<CompleteStr, Token>,
-    ws!(
-        do_parse!(
-            tag!("#") >>
-            reg_num: digit >>
-            (
-                Token::IntegerOperand {value: reg_num.parse::<i32>().unwrap()}
-            )
-        )
-    )
-);
+fn integer_operand<'a>(i: &'a str) -> IResult<&'a str, Token, VerboseError<&'a str>> {
+    map(preceded(tag("#"), digit1), |reg_num: &str| {
+        Token::IntegerOperand {
+            value: reg_num.parse::<i32>().unwrap(),
+        }
+    })(i)
+}
 
-named!(rkstring<CompleteStr, Token>,
-    alt!(
-        rkstring_single_quote |
-        rkstring_double_quote
-    )
-);
-
-named!(rkstring_single_quote<CompleteStr, Token>,
-    do_parse!(
-        alt!(tag!("'")) >>
-        content: take_until!("'") >>
-        tag!("'") >>
-        (
-            Token::RkString{ name: content.to_string() }
-        )
-    )
-);
-
-named!(rkstring_double_quote<CompleteStr, Token>,
-    do_parse!(
-        alt!(tag!("\"")) >>
-        content: take_until!("\"") >>
-        tag!("\"") >>
-        (
-            Token::RkString{ name: content.to_string() }
-        )
-    )
-);
+fn rkstring<'a>(i: &'a str) -> IResult<&'a str, Token, VerboseError<&'a str>> {
+    map(
+        alt((
+            delimited(tag("'"), take_until1("'"), tag("'")),
+            delimited(tag("\""), take_until1("\""), tag("\"")),
+        )),
+        |name: &str| Token::RkString {
+            name: name.to_string(),
+        },
+    )(i)
+}
 
 #[cfg(test)]
 mod test {
@@ -57,24 +39,30 @@ mod test {
 
     #[test]
     fn test_parse_integer_operand() {
-        let result = integer_operand(CompleteStr("#10"));
+        let result = integer_operand("#10");
         assert!(result.is_ok());
         let (rest, value) = result.unwrap();
-        assert_eq!(rest, CompleteStr(""));
-        assert_eq!(value, Token::IntegerOperand{value: 10});
+        assert_eq!(rest, "");
+        assert_eq!(value, Token::IntegerOperand { value: 10 });
 
-        let result = integer_operand(CompleteStr("10"));
+        let result = integer_operand("10");
         assert!(result.is_err());
     }
 
     #[test]
     fn test_parse_string_operand() {
-        assert!(rkstring(CompleteStr("'This is a test'")).is_ok());
-        assert!(rkstring(CompleteStr("'This is a \"test\"'")).is_ok());
-        assert!(rkstring(CompleteStr("\"This is a test\"")).is_ok());
-        assert!(rkstring(CompleteStr("\"This is a 'test'\"")).is_ok());
-        assert!(rkstring(CompleteStr("\"This is a test'")).is_err());
-        assert!(rkstring(CompleteStr("'This is a test\"")).is_err());
+        assert!(rkstring("'This is a test'").is_ok());
+        assert!(rkstring("'This is a \"test\"'").is_ok());
+        assert!(rkstring("\"This is a test\"").is_ok());
+        assert!(rkstring("\"This is a 'test'\"").is_ok());
+        assert!(rkstring("\"This is a test'").is_err());
+        assert!(rkstring("'This is a test\"").is_err());
     }
 
+    #[test]
+    fn test_parse_alt_operand() {
+        assert!(operand("'This is a test' ").is_ok());
+        assert!(operand(" $1").is_ok());
+        assert!(operand("#1 ").is_ok());
+    }
 }

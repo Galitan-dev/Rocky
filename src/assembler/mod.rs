@@ -1,27 +1,31 @@
-use nom::types::CompleteStr;
-
 use crate::instruction::Opcode;
 
-use self::{program_parser::{program, Program}, symbols::{SymbolTable, SymbolType, Symbol}, error::AssemblerError, instruction_parser::AssemblerInstruction};
+use self::{
+    error::AssemblerError,
+    instruction_parser::AssemblerInstruction,
+    program_parser::{program, Program},
+    symbols::{Symbol, SymbolTable, SymbolType},
+};
 
+pub mod directive_parser;
+pub mod error;
+pub mod instruction_parser;
+pub mod label_parser;
 pub mod opcode_parser;
 pub mod operand_parser;
-pub mod register_parser;
-pub mod instruction_parser;
 pub mod program_parser;
-pub mod directive_parser;
-pub mod label_parser;
+pub mod register_parser;
 pub mod symbols;
-pub mod error;
+pub mod utils;
 
 pub const PIE_HEADER_PREFIX: [u8; 4] = [45, 50, 49, 45];
 pub const PIE_HEADER_LENGTH: usize = 64;
 
 #[derive(Debug, PartialEq)]
 pub enum Token {
-    Opcode {code: Opcode},
-    Register {reg_num: u8},
-    IntegerOperand {value: i32},
+    Opcode { code: Opcode },
+    Register { reg_num: u8 },
+    IntegerOperand { value: i32 },
     LabelDeclaration { name: String },
     LabelUsage { name: String },
     Directive { name: String },
@@ -58,26 +62,26 @@ impl Assembler {
             sections: Vec::new(),
             current_section: None,
             current_instruction: 0,
-            errors: Vec::new()
+            errors: Vec::new(),
         }
     }
 
     pub fn assemble(&mut self, raw: &str) -> Result<Vec<u8>, Vec<AssemblerError>> {
-        match program(CompleteStr(raw)) {
+        match program(raw) {
             Ok((remainder, program)) => {
-                if remainder != CompleteStr("") {
-                    println!("{remainder}");
+                if remainder != "" {
+                    println!("Remaining {remainder:?}");
                     return Err(vec![AssemblerError::UnterminatedProgram]);
                 }
 
                 let mut assembled_program = self.write_pie_header();
-    
+
                 self.process_first_phase(&program);
-    
+
                 if !self.errors.is_empty() {
                     return Err(self.errors.clone());
                 };
-    
+
                 if self.sections.len() != 2 {
                     println!("Did not find at least two sections.");
                     self.errors.push(AssemblerError::InsufficientSections);
@@ -85,32 +89,35 @@ impl Assembler {
                 }
 
                 let mut body = self.process_second_phase(&program);
-    
 
                 assembled_program.append(&mut body);
                 Ok(assembled_program)
-            },
+            }
             Err(e) => {
                 println!("There was an error parsing the code: {:?}", e);
-                Err(vec![AssemblerError::ParseError{ error: e.to_string() }])
+                Err(vec![AssemblerError::ParseError {
+                    error: e.to_string(),
+                }])
             }
         }
     }
-    
+
     fn process_first_phase(&mut self, p: &Program) {
         for i in &p.instructions {
             if i.is_label() {
                 if self.current_section.is_some() {
                     self.process_label_declaration(&i);
                 } else {
-                    self.errors.push(AssemblerError::NoSegmentDeclarationFound{instruction: self.current_instruction});
+                    self.errors.push(AssemblerError::NoSegmentDeclarationFound {
+                        instruction: self.current_instruction,
+                    });
                 }
             }
 
             if i.is_directive() {
                 self.process_directive(i);
             }
-            
+
             self.current_instruction += 1;
         }
 
@@ -119,28 +126,31 @@ impl Assembler {
 
     fn process_label_declaration(&mut self, i: &AssemblerInstruction) {
         let name = match i.label_name() {
-            Some(name) => { name },
+            Some(name) => name,
             None => {
-                self.errors.push(AssemblerError::StringConstantDeclaredWithoutLabel{instruction: self.current_instruction});
+                self.errors
+                    .push(AssemblerError::StringConstantDeclaredWithoutLabel {
+                        instruction: self.current_instruction,
+                    });
                 return;
             }
         };
-    
+
         if self.symbols.has_symbol(&name) {
             self.errors.push(AssemblerError::SymbolAlreadyDeclared);
             return;
         }
-    
+
         let symbol = Symbol::new(name, SymbolType::Label, 0);
         self.symbols.add_symbol(symbol);
     }
 
     fn process_directive(&mut self, i: &AssemblerInstruction) {
-        let directive_name = match i.directive_name() { 
-            Some(name) => name, 
-            None => { 
-                println!("Directive has an invalid name: {:?}", i); 
-                return; 
+        let directive_name = match i.directive_name() {
+            Some(name) => name,
+            None => {
+                println!("Directive has an invalid name: {:?}", i);
+                return;
             }
         };
 
@@ -148,9 +158,11 @@ impl Assembler {
             match directive_name.as_ref() {
                 "asciiz" => {
                     self.handle_asciiz(i);
-                },
+                }
                 _ => {
-                    self.errors.push(AssemblerError::UnknownDirectiveFound{ directive: directive_name.clone() });
+                    self.errors.push(AssemblerError::UnknownDirectiveFound {
+                        directive: directive_name.clone(),
+                    });
                     return;
                 }
             }
@@ -160,7 +172,9 @@ impl Assembler {
     }
 
     fn handle_asciiz(&mut self, i: &AssemblerInstruction) {
-        if self.phase != AssemblerPhase::First { return; }
+        if self.phase != AssemblerPhase::First {
+            return;
+        }
 
         match i.string_constant() {
             Some(s) => {
@@ -171,7 +185,7 @@ impl Assembler {
                         return;
                     }
                 };
-                
+
                 for byte in s.as_bytes() {
                     self.ro.push(*byte);
                     self.ro_offset += 1;
@@ -189,13 +203,16 @@ impl Assembler {
     fn process_section_header(&mut self, header_name: &str) {
         let new_section: AssemblerSection = header_name.into();
         if new_section == AssemblerSection::Unknown {
-            println!("Found an section header that is unknown: {:#?}", header_name);
+            println!(
+                "Found an section header that is unknown: {:#?}",
+                header_name
+            );
             return;
         }
         self.sections.push(new_section.clone());
         self.current_section = Some(new_section);
     }
-    
+
     fn process_second_phase(&mut self, p: &Program) -> Vec<u8> {
         self.current_instruction = 0;
         let mut program = Vec::new();
@@ -224,8 +241,6 @@ impl Assembler {
     }
 }
 
-
-
 #[derive(Debug, PartialEq, Clone)]
 pub enum AssemblerSection {
     Data { starting_instruction: Option<u32> },
@@ -242,8 +257,12 @@ impl Default for AssemblerSection {
 impl<'a> From<&'a str> for AssemblerSection {
     fn from(name: &str) -> AssemblerSection {
         match name {
-            "data" => AssemblerSection::Data { starting_instruction: None },
-            "code" => AssemblerSection::Code { starting_instruction: None },
+            "data" => AssemblerSection::Data {
+                starting_instruction: None,
+            },
+            "code" => AssemblerSection::Code {
+                starting_instruction: None,
+            },
             _ => AssemblerSection::Unknown,
         }
     }
@@ -251,8 +270,8 @@ impl<'a> From<&'a str> for AssemblerSection {
 
 #[cfg(test)]
 mod tests {
-    use crate::vm::VM;
     use super::*;
+    use crate::vm::VM;
 
     #[test]
     fn test_assemble_program() {
@@ -264,5 +283,4 @@ mod tests {
         vm.add_bytes(program);
         assert_eq!(vm.program.len(), 85);
     }
-    
 }

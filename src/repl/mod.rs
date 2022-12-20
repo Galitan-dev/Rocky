@@ -1,16 +1,22 @@
-use std::{io::Read, num::ParseIntError, path::Path, fs::File};
-use nom::types::CompleteStr;
-use rustyline::{Editor, error::ReadlineError};
-use crate::{vm::VM, assembler::{program_parser::program, symbols::SymbolTable, Assembler}, scheduler::Scheduler};
+use crate::{
+    assembler::{program_parser::program, symbols::SymbolTable, Assembler},
+    scheduler::Scheduler,
+    vm::VM,
+};
+use rustyline::{error::ReadlineError, Editor};
+use std::{fs::File, io::Read, num::ParseIntError, path::Path};
 
-use self::{command_parser::CommandParser, hinter::{RkHinter, rk_hints}};
+use self::{
+    command_parser::CommandParser,
+    hinter::{rk_hints, RkHinter},
+};
 
 pub mod command_parser;
 pub mod hinter;
 
 pub enum REPLMode {
     Hexadecimal,
-    Assembly
+    Assembly,
 }
 
 pub struct REPL {
@@ -30,15 +36,13 @@ impl REPL {
             asm: Assembler::new(),
             scheduler: Scheduler::new(),
             rl: Editor::new()?,
-            helper: RkHinter {
-                hints: rk_hints()
-            }
+            helper: RkHinter { hints: rk_hints() },
         })
     }
 
     pub fn run(&mut self) {
         println!("Welcome to Rocky! Let's be nerds!");
-        
+
         self.rl.set_helper(Some(self.helper.clone()));
         self.rl.load_history("history.txt").ok();
 
@@ -49,28 +53,28 @@ impl REPL {
                     if line.starts_with("!") {
                         self.execute_command(&line);
                     } else {
-                        match self.mode{
+                        match self.mode {
                             REPLMode::Hexadecimal => self.execute_hexadecimal(&line),
                             REPLMode::Assembly => self.execute_assembly(&line),
                         }
                     }
-                },
+                }
                 Err(ReadlineError::Interrupted) => {
                     println!("(To quit, press Ctrl+D or type !quit)");
-                },
+                }
                 Err(ReadlineError::Eof) => {
                     self.execute_command("!quit");
-                },
+                }
                 Err(err) => {
                     println!("Error: {:?}", err);
-                    break
+                    break;
                 }
             }
         }
     }
 
     fn execute_assembly(&mut self, assembly: &str) {
-        let parsed_program = program(CompleteStr(assembly));
+        let parsed_program = program(assembly);
         if !parsed_program.is_ok() {
             println!("Unable to parse input");
         }
@@ -90,7 +94,7 @@ impl REPL {
                     self.vm.add_byte(byte)
                 }
                 self.vm.run_once();
-            },
+            }
             Err(_e) => {
                 println!("Unable to decode hex string. Please enter 4 groups of 2 hex characters.")
             }
@@ -108,7 +112,9 @@ impl REPL {
             "!symbols" => self.symbols(&args[1..]),
             "!load_file" => self.load_file(&args[1..]),
             "!spawn" => self.spawn(&args[1..]),
-            _ => { println!("Invalid command") }
+            _ => {
+                println!("Invalid command")
+            }
         };
     }
 
@@ -190,7 +196,7 @@ impl REPL {
                     self.vm.program.append(&mut assembled_program);
                     // println!("{:#?}", self.vm.program);
                     self.scheduler.get_thread(self.vm.clone());
-                },
+                }
                 Err(errors) => {
                     for error in errors {
                         println!("Unable to parse input: {}", error);
@@ -200,7 +206,7 @@ impl REPL {
         }
     }
 
-    fn parse_hex(i: &str) -> Result<Vec<u8>, ParseIntError>{
+    fn parse_hex(i: &str) -> Result<Vec<u8>, ParseIntError> {
         let split = i.split(" ").collect::<Vec<&str>>();
         let mut results: Vec<u8> = vec![];
         for hex_string in split {
@@ -208,7 +214,7 @@ impl REPL {
             match byte {
                 Ok(result) => {
                     results.push(result);
-                },
+                }
                 Err(e) => {
                     return Err(e);
                 }
@@ -219,7 +225,7 @@ impl REPL {
 
     fn get_data_from_load(&mut self, filename: &Path) -> Option<String> {
         let mut f = match File::open(&filename) {
-            Ok(f) => { f }
+            Ok(f) => f,
             Err(e) => {
                 println!("There was an error opening that file: {:?}", e);
                 return None;
@@ -227,9 +233,7 @@ impl REPL {
         };
         let mut contents = String::new();
         match f.read_to_string(&mut contents) {
-            Ok(_bytes_read) => {
-                Some(contents)
-            },
+            Ok(_bytes_read) => Some(contents),
             Err(e) => {
                 println!("there was an error reading that file: {:?}", e);
                 None

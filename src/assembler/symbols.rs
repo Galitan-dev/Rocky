@@ -8,10 +8,10 @@ pub struct Symbol {
 
 impl Symbol {
     pub fn new(name: String, symbol_type: SymbolType, offset: u32) -> Symbol {
-        Symbol{
+        Symbol {
             name,
             symbol_type,
-            offset
+            offset,
         }
     }
 }
@@ -23,13 +23,13 @@ pub enum SymbolType {
 
 #[derive(Debug)]
 pub struct SymbolTable {
-    pub symbols: Vec<Symbol>
+    pub symbols: Vec<Symbol>,
 }
 
 impl SymbolTable {
     pub fn new() -> SymbolTable {
-        SymbolTable{
-            symbols: Vec::new()
+        SymbolTable {
+            symbols: Vec::new(),
         }
     }
 
@@ -49,7 +49,7 @@ impl SymbolTable {
     pub fn has_symbol(&self, s: &str) -> bool {
         for symbol in &self.symbols {
             if symbol.name == s {
-                return true
+                return true;
             }
         }
         false
@@ -68,7 +68,6 @@ impl SymbolTable {
 mod test {
     use super::*;
 
-    
     #[test]
     fn test_symbol_table() {
         let mut sym = SymbolTable::new();
@@ -82,5 +81,4 @@ mod test {
         let v = sym.symbol_value("does_not_exist");
         assert_eq!(v.is_some(), false);
     }
-
 }

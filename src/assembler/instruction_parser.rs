@@ -1,6 +1,16 @@
-use nom::{types::CompleteStr};
-use super::{Token, opcode_parser::opcode, operand_parser::operand, label_parser::label_declaration, directive_parser::directive, symbols::SymbolTable};
+use nom::{
+    branch::alt,
+    bytes::complete::tag,
+    combinator::{map, opt},
+    error::VerboseError,
+    sequence::{terminated, tuple},
+    IResult,
+};
 
+use super::{
+    directive_parser::directive, label_parser::label_declaration, opcode_parser::opcode,
+    operand_parser::operand, symbols::SymbolTable, utils::ws, Token,
+};
 
 #[derive(Debug, PartialEq)]
 pub struct AssemblerInstruction {
@@ -12,14 +22,14 @@ pub struct AssemblerInstruction {
     pub operand3: Option<Token>,
 }
 
-impl Default for AssemblerInstruction{
+impl Default for AssemblerInstruction {
     fn default() -> Self {
-        Self { 
-            opcode: None, 
-            label: None, 
-            directive: None, 
-            operand1: None, 
-            operand2: None, 
+        Self {
+            opcode: None,
+            label: None,
+            directive: None,
+            operand1: None,
+            operand2: None,
             operand3: None,
         }
     }
@@ -30,8 +40,8 @@ impl AssemblerInstruction {
         let mut results: Vec<u8> = vec![];
         if let Some(ref token) = self.opcode {
             match token {
-                Token::Opcode { code } =>  results.push(*code as u8),
-                _ => println!("Non-opcode found in opcode field")
+                Token::Opcode { code } => results.push(*code as u8),
+                _ => println!("Non-opcode found in opcode field"),
             }
         }
         for operand in &[&self.operand1, &self.operand2, &self.operand3] {
@@ -42,7 +52,6 @@ impl AssemblerInstruction {
 
         results
     }
-
 
     pub fn is_label(&self) -> bool {
         self.label.is_some()
@@ -69,7 +78,7 @@ impl AssemblerInstruction {
                 let byte2 = converted >> 8;
                 results.push(byte2 as u8);
                 results.push(byte1 as u8);
-            },
+            }
             Token::LabelUsage { name } => {
                 let value = symbols.symbol_value(name).unwrap();
                 let converted = value as u16;
@@ -77,7 +86,7 @@ impl AssemblerInstruction {
                 let byte2 = converted >> 8;
                 results.push(byte2 as u8);
                 results.push(byte1 as u8);
-            },
+            }
             _ => {
                 println!("Opcode found in operand field");
                 std::process::exit(1);
@@ -118,51 +127,49 @@ impl AssemblerInstruction {
     }
 }
 
-named!(instruction_combined<CompleteStr, AssemblerInstruction>,
-    ws!(do_parse!(
-        l: opt!(label_declaration) >>
-        o: opcode >>
-        o1: opt!(operand) >>
-        o2: opt!(operand) >>
-        o3: opt!(operand) >>
-        _o4: opt!(operand) >>
-        (
-            AssemblerInstruction {
-                opcode: Some(o),
-                label: l,
-                operand1: o1,
-                operand2: o2,
-                operand3: o3,
-                ..Default::default()
-            }
-        )
-    ))
-);
+fn instruction_combined<'a>(
+    i: &'a str,
+) -> IResult<&'a str, AssemblerInstruction, VerboseError<&'a str>> {
+    ws(map(
+        terminated(
+            tuple((
+                opt(label_declaration),
+                opcode,
+                opt(operand),
+                opt(operand),
+                opt(operand),
+            )),
+            opt(tag("\n")),
+        ),
+        |(l, o, o1, o2, o3)| AssemblerInstruction {
+            opcode: Some(o),
+            label: l,
+            operand1: o1,
+            operand2: o2,
+            operand3: o3,
+            ..Default::default()
+        },
+    ))(i)
+}
 
-named!(pub instruction<CompleteStr, AssemblerInstruction>,
-    do_parse!(
-        ins: alt!(
-            instruction_combined |
-            directive
-        ) >>
-        (
-            ins
-        )
-    )
-);
+pub fn instruction<'a>(
+    i: &'a str,
+) -> IResult<&'a str, AssemblerInstruction, VerboseError<&'a str>> {
+    alt((instruction_combined, directive))(i)
+}
 
 #[cfg(test)]
 mod test {
-    use super::*;
     use super::super::Opcode;
+    use super::*;
 
     #[test]
     fn test_parse_instruction_form_one() {
-        let result = instruction(CompleteStr("hlt\n"));
+        let result = instruction("hlt\n");
         assert_eq!(
             result,
             Ok((
-                CompleteStr(""),
+                "",
                 AssemblerInstruction {
                     opcode: Some(Token::Opcode { code: Opcode::HLT }),
                     ..Default::default()
@@ -173,11 +180,11 @@ mod test {
 
     #[test]
     fn test_parse_instruction_form_one_uppercase() {
-        let result = instruction(CompleteStr("HLT\n"));
+        let result = instruction("HLT\n");
         assert_eq!(
             result,
             Ok((
-                CompleteStr(""),
+                "",
                 AssemblerInstruction {
                     opcode: Some(Token::Opcode { code: Opcode::HLT }),
                     ..Default::default()
@@ -188,11 +195,11 @@ mod test {
 
     #[test]
     fn test_parse_instruction_form_two() {
-        let result = instruction(CompleteStr("load $0 #100\n"));
+        let result = instruction("load $0 #100\n");
         assert_eq!(
             result,
             Ok((
-                CompleteStr(""),
+                "",
                 AssemblerInstruction {
                     opcode: Some(Token::Opcode { code: Opcode::LOAD }),
                     operand1: Some(Token::Register { reg_num: 0 }),
@@ -205,11 +212,21 @@ mod test {
 
     #[test]
     fn test_parse_instruction_form_three() {
-        let result = instruction(CompleteStr("add $0 $1 $2\n"));
+        println!(
+            "{:?}",
+            tuple((
+                opt(label_declaration),
+                opcode,
+                opt(operand),
+                opt(operand),
+                opt(operand),
+            ))("add $0 $1 $2")
+        );
+        let result = instruction("add $0 $1 $2\n");
         assert_eq!(
             result,
             Ok((
-                CompleteStr(""),
+                "",
                 AssemblerInstruction {
                     opcode: Some(Token::Opcode { code: Opcode::ADD }),
                     operand1: Some(Token::Register { reg_num: 0 }),

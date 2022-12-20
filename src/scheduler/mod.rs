@@ -1,5 +1,8 @@
-use std::{thread, io::{self, Write}};
-use crate::vm::{VM, VMEvent};
+use crate::vm::{VMEvent, VM};
+use std::{
+    io::{self, Write},
+    thread,
+};
 
 #[allow(unused)]
 #[derive(Default)]
@@ -12,7 +15,7 @@ impl Scheduler {
     pub fn new() -> Self {
         Self {
             next_pid: 0,
-            max_pid: 50_000
+            max_pid: 50_000,
         }
     }
 
@@ -24,7 +27,7 @@ impl Scheduler {
             println!("--------------------------");
             for event in &events {
                 println!("{:#?}", event);
-            };
+            }
             print!(">>> ");
             io::stdout().flush().expect("Unable to flush stdout");
             events
