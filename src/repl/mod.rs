@@ -168,7 +168,6 @@ impl REPL {
                 Ok(mut assembled_program) => {
                     println!("Sending assembled program to VM");
                     self.vm.program.append(&mut assembled_program);
-                    self.vm.ro_data.append(&mut self.asm.ro);
                     self.vm.run();
                 }
                 Err(errors) => {
@@ -192,9 +191,7 @@ impl REPL {
             match self.asm.assemble(&contents) {
                 Ok(mut assembled_program) => {
                     println!("Sending assembled program to VM");
-                    self.vm.ro_data.append(&mut self.asm.ro);
                     self.vm.program.append(&mut assembled_program);
-                    // println!("{:#?}", self.vm.program);
                     self.scheduler.get_thread(self.vm.clone());
                 }
                 Err(errors) => {

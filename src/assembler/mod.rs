@@ -1,3 +1,5 @@
+use byteorder::{LittleEndian, WriteBytesExt};
+
 use crate::instruction::Opcode;
 
 use self::{
@@ -74,8 +76,6 @@ impl Assembler {
                     return Err(vec![AssemblerError::UnterminatedProgram]);
                 }
 
-                let mut assembled_program = self.write_pie_header();
-
                 self.process_first_phase(&program);
 
                 if !self.errors.is_empty() {
@@ -90,6 +90,10 @@ impl Assembler {
 
                 let mut body = self.process_second_phase(&program);
 
+                let mut assembled_program = self.write_pie_header();
+
+                // this will empty both body and ro
+                assembled_program.append(&mut self.ro);
                 assembled_program.append(&mut body);
                 Ok(assembled_program)
             }
@@ -230,13 +234,21 @@ impl Assembler {
     }
 
     fn write_pie_header(&self) -> Vec<u8> {
-        let mut header = Vec::new();
-        for byte in PIE_HEADER_PREFIX.into_iter() {
+        let mut header = vec![];
+        for byte in &PIE_HEADER_PREFIX {
             header.push(byte.clone());
         }
+    
+        let mut wtr: Vec<u8> = Vec::new();
+    
+        wtr.write_u32::<LittleEndian>(self.ro.len() as u32).unwrap();
+    
+        header.append(&mut wtr);
+    
         while header.len() < PIE_HEADER_LENGTH {
             header.push(0 as u8);
         }
+    
         header
     }
 }
@@ -282,5 +294,14 @@ mod tests {
         assert_eq!(program.len(), 85);
         vm.add_bytes(program);
         assert_eq!(vm.program.len(), 85);
+    }
+
+    #[test]
+    fn test_code_start_offset_written() {
+        let mut asm = Assembler::new();
+        let test_string = ".data\ntest1: .asciiz 'Hello'\n.code\nload $0 #100\nload $1 #1\nload $2 #0\ntest: inc $0\nneq $0 $2\njmpe @test\nhlt";
+        let program = asm.assemble(test_string);
+        assert_eq!(program.is_ok(), true);
+        assert_eq!(program.unwrap()[PIE_HEADER_PREFIX.len()], 6);
     }
 }

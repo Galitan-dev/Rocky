@@ -19,7 +19,6 @@ fn main() -> Result<(), ReadlineError> {
             let mut asm = Assembler::new();
             let mut vm = VM::new();
             let program = asm.assemble(&program);
-            vm.ro_data = asm.ro;
             match program {
                 Ok(p) => {
                     vm.add_bytes(p);

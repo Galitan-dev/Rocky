@@ -2,8 +2,9 @@ use crate::{
     assembler::{PIE_HEADER_LENGTH, PIE_HEADER_PREFIX},
     instruction::Opcode,
 };
+use byteorder::{LittleEndian, ReadBytesExt};
 use chrono::{DateTime, Utc};
-use std::{thread, time::Duration};
+use std::{thread, time::Duration, io::Cursor};
 use uuid::Uuid;
 
 #[derive(Clone, Debug)]
@@ -67,7 +68,8 @@ impl VM {
             return self.events.clone();
         }
 
-        self.pc = 64;
+        self.ro_data = self.program[64..64 + self.get_starting_offset()].to_vec();
+        self.pc = 64 + self.get_starting_offset();
 
         let mut is_done = None;
         while is_done.is_none() {
@@ -129,7 +131,7 @@ impl VM {
             }
             Opcode::JMP => {
                 let target = self.registers[self.next_8_bits() as usize];
-                self.pc = target as usize;
+                self.pc = target as usize + self.get_starting_offset();
             }
             Opcode::JMPF => {
                 let value = self.registers[self.next_8_bits() as usize];
@@ -179,7 +181,7 @@ impl VM {
                 let register = self.next_8_bits() as usize;
                 let target = self.registers[register];
                 if self.equal_flag {
-                    self.pc = target as usize;
+                    self.pc = target as usize + self.get_starting_offset();
                 }
             }
             Opcode::ALOC => {
@@ -255,6 +257,11 @@ impl VM {
             return false;
         }
         true
+    }
+
+    fn get_starting_offset(&self) -> usize {
+        let mut rdr = Cursor::new(&self.program[PIE_HEADER_PREFIX.len()..PIE_HEADER_PREFIX.len() + 4]);
+        rdr.read_u32::<LittleEndian>().unwrap() as usize
     }
 
     pub fn prepend_header(mut b: Vec<u8>) -> Vec<u8> {
