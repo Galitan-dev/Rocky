@@ -1,22 +1,11 @@
-extern crate chrono;
-extern crate clap;
-extern crate colored;
-extern crate nom;
-extern crate rustyline;
-extern crate rustyline_derive;
-extern crate uuid;
-
-use cli::cli;
-use repl::{REPLMode, REPL};
+use rocky::{
+    assembler::Assembler,
+    cli::cli,
+    repl::{REPLMode, REPL},
+    vm::VM,
+};
 use rustyline::error::ReadlineError;
 use std::{fs::File, io::Read, path::Path};
-
-pub mod assembler;
-pub mod cli;
-pub mod instruction;
-pub mod repl;
-pub mod scheduler;
-pub mod vm;
 
 fn main() -> Result<(), ReadlineError> {
     let matches = cli().get_matches();
@@ -27,8 +16,8 @@ fn main() -> Result<(), ReadlineError> {
         Some(mut filenames) => {
             let filename = filenames.next().unwrap().to_str().unwrap();
             let program = read_file(filename);
-            let mut asm = assembler::Assembler::new();
-            let mut vm = vm::VM::new();
+            let mut asm = Assembler::new();
+            let mut vm = VM::new();
             let program = asm.assemble(&program);
             vm.ro_data = asm.ro;
             match program {

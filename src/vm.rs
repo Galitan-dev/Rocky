@@ -1,4 +1,7 @@
-use crate::{assembler::PIE_HEADER_PREFIX, instruction::Opcode};
+use crate::{
+    assembler::{PIE_HEADER_LENGTH, PIE_HEADER_PREFIX},
+    instruction::Opcode,
+};
 use chrono::{DateTime, Utc};
 use std::{thread, time::Duration};
 use uuid::Uuid;
@@ -253,15 +256,8 @@ impl VM {
         }
         true
     }
-}
 
-#[cfg(test)]
-mod test {
-    use crate::assembler::PIE_HEADER_LENGTH;
-
-    use super::*;
-
-    fn prepend_header(mut b: Vec<u8>) -> Vec<u8> {
+    pub fn prepend_header(mut b: Vec<u8>) -> Vec<u8> {
         let mut prepension = vec![];
         for byte in PIE_HEADER_PREFIX.into_iter() {
             prepension.push(byte.clone());
@@ -272,6 +268,11 @@ mod test {
         prepension.append(&mut b);
         prepension
     }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
 
     #[test]
     fn test_create_vm() {
@@ -286,7 +287,7 @@ mod test {
         fn test_hlt() {
             let mut test_vm = VM::new();
             test_vm.program = vec![0];
-            test_vm.program = prepend_header(test_vm.program);
+            test_vm.program = VM::prepend_header(test_vm.program);
             test_vm.run();
             assert_eq!(test_vm.pc, 65);
         }
@@ -295,7 +296,7 @@ mod test {
         fn test_igl() {
             let mut test_vm = VM::new();
             test_vm.program = vec![200];
-            test_vm.program = prepend_header(test_vm.program);
+            test_vm.program = VM::prepend_header(test_vm.program);
             test_vm.run();
             assert_eq!(test_vm.pc, 65);
         }
@@ -304,7 +305,7 @@ mod test {
         fn test_load() {
             let mut test_vm = VM::new();
             test_vm.program = vec![1, 0, 1, 244];
-            test_vm.program = prepend_header(test_vm.program);
+            test_vm.program = VM::prepend_header(test_vm.program);
             test_vm.run();
             assert_eq!(test_vm.registers[0], 500);
         }
@@ -318,8 +319,7 @@ mod test {
                 test_vm.registers[0] = 50;
                 test_vm.registers[1] = 25;
                 test_vm.program = vec![2, 0, 1, 0];
-                test_vm.program = prepend_header(test_vm.program);
-                test_vm.run();
+                test_vm.run_once();
                 assert_eq!(test_vm.registers[0], 75);
             }
 
@@ -329,8 +329,7 @@ mod test {
                 test_vm.registers[0] = 50;
                 test_vm.registers[1] = 25;
                 test_vm.program = vec![3, 0, 1, 0];
-                test_vm.program = prepend_header(test_vm.program);
-                test_vm.run();
+                test_vm.run_once();
                 assert_eq!(test_vm.registers[0], 25);
             }
 
@@ -340,8 +339,7 @@ mod test {
                 test_vm.registers[0] = 50;
                 test_vm.registers[1] = 5;
                 test_vm.program = vec![4, 0, 1, 0];
-                test_vm.program = prepend_header(test_vm.program);
-                test_vm.run();
+                test_vm.run_once();
                 assert_eq!(test_vm.registers[0], 250);
             }
 
@@ -351,8 +349,7 @@ mod test {
                 test_vm.registers[0] = 50;
                 test_vm.registers[1] = 6;
                 test_vm.program = vec![5, 0, 1, 0];
-                test_vm.program = prepend_header(test_vm.program);
-                test_vm.run();
+                test_vm.run_once();
                 assert_eq!(test_vm.registers[0], 8);
                 assert_eq!(test_vm.remainder, 2);
             }
