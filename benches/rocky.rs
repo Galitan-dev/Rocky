@@ -41,7 +41,7 @@ mod arithmetic {
             test_vm.run_once();
         };
 
-        c.bench_function("execute_add", move |b| b.iter(|| clos));
+        c.bench_function("execute_mul", move |b| b.iter(|| clos));
     }
 
     fn execute_div(c: &mut Criterion) {
@@ -53,7 +53,7 @@ mod arithmetic {
             test_vm.run_once();
         };
 
-        c.bench_function("execute_add", move |b| b.iter(|| clos));
+        c.bench_function("execute_div", move |b| b.iter(|| clos));
     }
 
     criterion_group! {
