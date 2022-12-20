@@ -251,7 +251,7 @@ impl VM {
     }
 
     fn verify_header(&self) -> bool {
-        if self.program[0..4] != PIE_HEADER_PREFIX {
+        if self.program[0..PIE_HEADER_PREFIX.len()] != PIE_HEADER_PREFIX {
             return false;
         }
         true

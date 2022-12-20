@@ -18,7 +18,7 @@ pub mod register_parser;
 pub mod symbols;
 pub mod utils;
 
-pub const PIE_HEADER_PREFIX: [u8; 4] = [45, 50, 49, 45];
+pub const PIE_HEADER_PREFIX: [u8; 5] = [ 114, 111, 99, 107, 121 ];
 pub const PIE_HEADER_LENGTH: usize = 64;
 
 #[derive(Debug, PartialEq)]
