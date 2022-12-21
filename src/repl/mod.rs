@@ -14,6 +14,7 @@ use self::{
 pub mod command_parser;
 pub mod hinter;
 
+#[derive(Debug, Clone)]
 pub enum REPLMode {
     Hexadecimal,
     Assembly,

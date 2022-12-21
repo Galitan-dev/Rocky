@@ -1,10 +1,14 @@
 extern crate chrono;
 extern crate clap;
 extern crate colored;
+extern crate futures;
 extern crate nom;
 extern crate num_cpus;
 extern crate rustyline;
 extern crate rustyline_derive;
+extern crate thrussh;
+extern crate thrussh_keys;
+extern crate tokio;
 extern crate uuid;
 
 pub mod assembler;
