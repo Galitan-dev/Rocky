@@ -7,7 +7,7 @@ load $2 #0
 load $3 #1
 load $4 #30
 
-load $5 #84
+load $5 #16
     prts @hello
     add $2 $3 $2
     mul $2 $4 $6
