@@ -75,8 +75,9 @@ impl REPL {
 
     fn execute_assembly(&mut self, assembly: &str) {
         let parsed_program = program(assembly);
-        if !parsed_program.is_ok() {
+        if parsed_program.is_err() {
             println!("Unable to parse input");
+            return;
         }
         let (_, result) = parsed_program.unwrap();
         let bytecode = result.to_bytes(&SymbolTable::new());
