@@ -1,5 +1,7 @@
 use clap::{command, Arg, ArgAction, Command};
 
+use crate::repl::REPLMode;
+
 pub fn cli() -> Command {
     command!()
         .name("rocky")
@@ -38,7 +40,7 @@ pub fn cli() -> Command {
                 .long("ssh-port")
                 .alias("port")
                 .short('p')
-                .action(ArgAction::SetTrue),
+                .default_value("22"),
         ])
         .subcommand(
             command!()
@@ -54,4 +56,29 @@ pub fn cli() -> Command {
                     .index(1)
                     .value_name("PUB_KEY_FILE")]),
         )
+}
+
+#[derive(Debug, Clone)]
+pub enum Args<'a> {
+    Repl(REPLArgs),
+    RunFile(RunFileArgs<'a>),
+    AddSshKey(AddSshKeyArgs<'a>),
+}
+
+#[derive(Debug, Clone)]
+pub struct REPLArgs {
+    pub mode: REPLMode,
+    pub enable_ssh: bool,
+    pub ssh_port: u8,
+}
+
+#[derive(Debug, Clone)]
+pub struct RunFileArgs<'a> {
+    pub num_threads: usize,
+    pub filename: &'a str,
+}
+
+#[derive(Debug, Clone)]
+pub struct AddSshKeyArgs<'a> {
+    pub pub_key_file: &'a str,
 }

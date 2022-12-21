@@ -6,19 +6,28 @@ use criterion::Criterion;
 use rocky::vm::VM;
 
 mod examples {
-    use rocky::run_file;
+    use rocky::{cli::RunFileArgs, run_file};
 
     use super::*;
 
     fn execute_hello_rk(c: &mut Criterion) {
-        let clos = || run_file(num_cpus::get(), "examples/hello.rk");
+        let clos = || {
+            run_file(RunFileArgs {
+                num_threads: num_cpus::get(),
+                filename: "examples/hello.rk",
+            })
+        };
 
         c.bench_function("execute_hello_rk", move |b| b.iter(clos));
     }
 
     fn execute_math_rk(c: &mut Criterion) {
-        let clos = || run_file(num_cpus::get(), "examples/math.rk");
-
+        let clos = || {
+            run_file(RunFileArgs {
+                num_threads: num_cpus::get(),
+                filename: "examples/math.rk",
+            })
+        };
         c.bench_function("execute_math_rk", move |b| b.iter(clos));
     }
 

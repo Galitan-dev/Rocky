@@ -15,10 +15,14 @@ rustyline-derive = { version = "0.7.0" }
 colored = "2.0.0"
 byteorder = "1.4.3"
 num_cpus = "1.15.0"
+anyhow = "1.0.68"
+futures = "0.3.25"
 thrussh = "0.33.5"
 thrussh-keys = "0.21.0"
-futures = "0.3.25"
 tokio = "1.23.0"
+toml = "0.5.10"
+serde = "1.0.151"
+serde_derive = "1.0.151"
 
 [dev-dependencies]
 criterion = "0.4.0"

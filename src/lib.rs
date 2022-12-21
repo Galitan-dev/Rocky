@@ -1,10 +1,12 @@
 use std::{fs::File, io::Read, path::Path};
 
 use assembler::Assembler;
-use repl::{REPLMode, REPL};
+use cli::{REPLArgs, RunFileArgs};
+use repl::REPL;
 use rustyline::error::ReadlineError;
 use vm::VM;
 
+extern crate anyhow;
 extern crate chrono;
 extern crate clap;
 extern crate colored;
@@ -23,10 +25,11 @@ pub mod cli;
 pub mod instruction;
 pub mod repl;
 pub mod scheduler;
+pub mod ssh;
 pub mod vm;
 
-pub fn start_repl(mode: REPLMode) -> Result<(), ReadlineError> {
-    let mut repl = REPL::new(mode)?;
+pub fn start_repl(args: REPLArgs) -> Result<(), ReadlineError> {
+    let mut repl = REPL::new(args.mode)?;
     repl.run();
     Ok(())
 }
@@ -53,11 +56,11 @@ fn read_file(tmp: &str) -> String {
     }
 }
 
-pub fn run_file(num_threads: usize, filename: &str) {
-    let program = read_file(filename);
+pub fn run_file(args: RunFileArgs) {
+    let program = read_file(args.filename);
     let mut asm = Assembler::new();
     let mut vm = VM::new();
-    vm.logical_cores = num_threads;
+    vm.logical_cores = args.num_threads;
     let program = asm.assemble(&program);
     match program {
         Ok(p) => {

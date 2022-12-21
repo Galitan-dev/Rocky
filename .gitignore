@@ -1,2 +1,7 @@
+/.VSCodeCounter
+/.vscode
+
 /target
+
 history.txt
+ssh.toml
