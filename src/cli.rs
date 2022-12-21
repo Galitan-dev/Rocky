@@ -12,4 +12,11 @@ pub fn cli() -> Command {
                 .required(false)
                 .index(1),
         )
+        .arg(
+            Arg::new("threads")
+                .help("Number of OS threads the VM will utilize")
+                .required(false)
+                .long("threads")
+                .short('t'),
+        )
 }

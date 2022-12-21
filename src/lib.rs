@@ -2,6 +2,7 @@ extern crate chrono;
 extern crate clap;
 extern crate colored;
 extern crate nom;
+extern crate num_cpus;
 extern crate rustyline;
 extern crate rustyline_derive;
 extern crate uuid;

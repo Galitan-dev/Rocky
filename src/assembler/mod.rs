@@ -20,7 +20,7 @@ pub mod register_parser;
 pub mod symbols;
 pub mod utils;
 
-pub const PIE_HEADER_PREFIX: [u8; 5] = [ 114, 111, 99, 107, 121 ];
+pub const PIE_HEADER_PREFIX: [u8; 5] = [114, 111, 99, 107, 121];
 pub const PIE_HEADER_LENGTH: usize = 64;
 
 #[derive(Debug, PartialEq)]
@@ -238,17 +238,17 @@ impl Assembler {
         for byte in &PIE_HEADER_PREFIX {
             header.push(byte.clone());
         }
-    
+
         let mut wtr: Vec<u8> = Vec::new();
-    
+
         wtr.write_u32::<LittleEndian>(self.ro.len() as u32).unwrap();
-    
+
         header.append(&mut wtr);
-    
+
         while header.len() < PIE_HEADER_LENGTH {
             header.push(0 as u8);
         }
-    
+
         header
     }
 }

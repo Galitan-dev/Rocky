@@ -1,3 +1,5 @@
+extern crate rocky;
+
 use rocky::{
     assembler::Assembler,
     cli::cli,
@@ -10,6 +12,23 @@ use std::{fs::File, io::Read, path::Path};
 fn main() -> Result<(), ReadlineError> {
     let matches = cli().get_matches();
 
+    let num_threads = match matches.get_raw("threads") {
+        Some(mut values) => {
+            let number = values.next().unwrap().to_str().unwrap();
+            match number.parse::<usize>() {
+                Ok(v) => v,
+                Err(_e) => {
+                    println!(
+                        "Invalid argument for number of threads: {}. Using default.",
+                        number
+                    );
+                    num_cpus::get()
+                }
+            }
+        }
+        None => num_cpus::get(),
+    };
+
     let target_file = matches.get_raw("input_file");
 
     match target_file {
@@ -18,6 +37,7 @@ fn main() -> Result<(), ReadlineError> {
             let program = read_file(filename);
             let mut asm = Assembler::new();
             let mut vm = VM::new();
+            vm.logical_cores = num_threads;
             let program = asm.assemble(&program);
             match program {
                 Ok(p) => {

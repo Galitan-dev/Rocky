@@ -4,7 +4,7 @@ use crate::{
 };
 use byteorder::{LittleEndian, ReadBytesExt};
 use chrono::{DateTime, Utc};
-use std::{thread, time::Duration, io::Cursor};
+use std::{io::Cursor, thread, time::Duration};
 use uuid::Uuid;
 
 #[derive(Clone, Debug)]
@@ -28,6 +28,7 @@ pub struct VM {
     pub pc: usize,
     pub program: Vec<u8>,
     pub ro_data: Vec<u8>,
+    pub logical_cores: usize,
     heap: Vec<u8>,
     remainder: u32,
     equal_flag: bool,
@@ -47,6 +48,7 @@ impl VM {
             heap: Vec::new(),
             events: Vec::new(),
             id: Uuid::new_v4(),
+            logical_cores: num_cpus::get(),
         }
     }
 
@@ -260,7 +262,8 @@ impl VM {
     }
 
     fn get_starting_offset(&self) -> usize {
-        let mut rdr = Cursor::new(&self.program[PIE_HEADER_PREFIX.len()..PIE_HEADER_PREFIX.len() + 4]);
+        let mut rdr =
+            Cursor::new(&self.program[PIE_HEADER_PREFIX.len()..PIE_HEADER_PREFIX.len() + 4]);
         rdr.read_u32::<LittleEndian>().unwrap() as usize
     }
 
