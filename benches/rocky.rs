@@ -5,6 +5,30 @@ extern crate rocky;
 use criterion::Criterion;
 use rocky::vm::VM;
 
+mod examples {
+    use rocky::run_file;
+
+    use super::*;
+
+    fn execute_hello_rk(c: &mut Criterion) {
+        let clos = || run_file(num_cpus::get(), "examples/hello.rk");
+
+        c.bench_function("execute_hello_rk", move |b| b.iter(clos));
+    }
+
+    fn execute_math_rk(c: &mut Criterion) {
+        let clos = || run_file(num_cpus::get(), "examples/math.rk");
+
+        c.bench_function("execute_math_rk", move |b| b.iter(clos));
+    }
+
+    criterion_group! {
+        name = examples;
+        config = Criterion::default();
+        targets = execute_math_rk, execute_hello_rk
+    }
+}
+
 mod arithmetic {
     use super::*;
 
@@ -63,4 +87,4 @@ mod arithmetic {
     }
 }
 
-criterion_main!(arithmetic::arithmetic);
+criterion_main!(arithmetic::arithmetic, examples::examples);
