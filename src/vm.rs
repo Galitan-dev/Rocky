@@ -230,7 +230,7 @@ impl VM {
 
     fn decode_opcode(&mut self) -> Opcode {
         let opcode = Opcode::from(self.program[self.pc]);
-        println!("{}: {} => {opcode:?}", self.pc, self.program[self.pc]);
+        // println!("{}: {} => {opcode:?}", self.pc, self.program[self.pc]);
         self.pc += 1;
         return opcode;
     }

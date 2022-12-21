@@ -13,7 +13,7 @@ mod arithmetic {
             let mut test_vm = VM::new();
             test_vm.registers[0] = 50;
             test_vm.registers[1] = 25;
-            test_vm.program = vec![2, 0, 1, 0];
+            test_vm.set_program(vec![2, 0, 1, 0], Vec::new());
             test_vm.run_once();
         };
 
@@ -25,7 +25,7 @@ mod arithmetic {
             let mut test_vm = VM::new();
             test_vm.registers[0] = 50;
             test_vm.registers[1] = 25;
-            test_vm.program = vec![3, 0, 1, 0];
+            test_vm.set_program(vec![3, 0, 1, 0], Vec::new());
             test_vm.run_once();
         };
 
@@ -37,7 +37,7 @@ mod arithmetic {
             let mut test_vm = VM::new();
             test_vm.registers[0] = 50;
             test_vm.registers[1] = 5;
-            test_vm.program = vec![4, 0, 1, 0];
+            test_vm.set_program(vec![4, 0, 1, 0], Vec::new());
             test_vm.run_once();
         };
 
@@ -49,7 +49,7 @@ mod arithmetic {
             let mut test_vm = VM::new();
             test_vm.registers[0] = 50;
             test_vm.registers[1] = 6;
-            test_vm.program = vec![5, 0, 1, 0];
+            test_vm.set_program(vec![5, 0, 1, 0], Vec::new());
             test_vm.run_once();
         };
 
