@@ -29,6 +29,12 @@ fn main() -> Result<(), ReadlineError> {
         None => num_cpus::get(),
     };
 
+    let mode = if matches.get_flag("hexadecimal") {
+        REPLMode::Hexadecimal
+    } else {
+        REPLMode::Assembly
+    };
+
     let target_file = matches.get_raw("input_file");
 
     match target_file {
@@ -59,15 +65,15 @@ fn main() -> Result<(), ReadlineError> {
             }
         }
         None => {
-            start_repl()?;
+            start_repl(mode)?;
         }
     };
 
     Ok(())
 }
 
-fn start_repl() -> Result<(), ReadlineError> {
-    let mut repl = REPL::new(REPLMode::Assembly)?;
+fn start_repl(mode: REPLMode) -> Result<(), ReadlineError> {
+    let mut repl = REPL::new(mode)?;
     repl.run();
     Ok(())
 }

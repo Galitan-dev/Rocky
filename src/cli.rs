@@ -1,4 +1,4 @@
-use clap::{command, Arg, Command};
+use clap::{command, Arg, ArgAction, Command};
 
 pub fn cli() -> Command {
     command!()
@@ -10,13 +10,24 @@ pub fn cli() -> Command {
             Arg::new("input_file")
                 .help("Path to the .rk file to run")
                 .required(false)
-                .index(1),
+                .index(1)
+                .value_name("INPUT_FILE"),
         )
         .arg(
             Arg::new("threads")
                 .help("Number of OS threads the VM will utilize")
                 .required(false)
                 .long("threads")
-                .short('t'),
+                .short('t')
+                .value_name("threads"),
+        )
+        .arg(
+            Arg::new("hexadecimal")
+                .help("Use the REPL in hexadecimal (for you, little weirdo)")
+                .required(false)
+                .long("hexadecimal")
+                .alias("hexa")
+                .short('H')
+                .action(ArgAction::SetTrue),
         )
 }
