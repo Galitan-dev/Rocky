@@ -1,4 +1,4 @@
-use crate::vm::{VMEvent, VM};
+use crate::vm::{events::VMEvent, VM};
 use std::{
     io::{self, Write},
     thread,

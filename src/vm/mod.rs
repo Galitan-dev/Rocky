@@ -3,33 +3,25 @@ use crate::{
     instruction::Opcode,
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
-use chrono::{DateTime, Utc};
-use std::{io::Cursor, thread, time::Duration};
+use std::io::Cursor;
 use uuid::Uuid;
 
-#[derive(Clone, Debug)]
-pub enum VMEventType {
-    Start,
-    GracefulStop { code: u32 },
-    Crash,
-}
+use self::{
+    events::{VMEvent, VMEventType},
+    operator::Operator,
+};
 
-#[allow(unused)]
-#[derive(Clone, Debug)]
-pub struct VMEvent {
-    event: VMEventType,
-    at: DateTime<Utc>,
-    application_id: Uuid,
-}
+pub mod events;
+pub mod operator;
 
 #[derive(Debug, Clone)]
 pub struct VM {
     pub registers: [i32; 32],
-    pub pc: usize,
+    pub program_counter: usize,
     pub program: Vec<u8>,
-    pub ro_data: Vec<u8>,
+    pub read_only_data: Vec<u8>,
     pub logical_cores: usize,
-    heap: Vec<u8>,
+    memory_heap: Vec<u8>,
     remainder: u32,
     equal_flag: bool,
     id: Uuid,
@@ -42,10 +34,10 @@ impl VM {
             registers: [0; 32],
             remainder: 0,
             equal_flag: false,
-            pc: 0,
+            program_counter: 0,
             program: Vec::new(),
-            ro_data: Vec::new(),
-            heap: Vec::new(),
+            read_only_data: Vec::new(),
+            memory_heap: Vec::new(),
             events: Vec::new(),
             id: Uuid::new_v4(),
             logical_cores: num_cpus::get(),
@@ -54,37 +46,32 @@ impl VM {
 
     // Loops as long as instructions can be executed.
     pub fn run(&mut self) -> Vec<VMEvent> {
-        self.events.push(VMEvent {
-            event: VMEventType::Start,
-            at: Utc::now(),
-            application_id: self.id.clone(),
-        });
+        self.events
+            .push(VMEvent::now(VMEventType::Start, self.id.clone()));
 
         if !self.verify_header() {
-            self.events.push(VMEvent {
-                event: VMEventType::Crash,
-                at: Utc::now(),
-                application_id: self.id.clone(),
-            });
+            self.events
+                .push(VMEvent::now(VMEventType::Crash, self.id.clone()));
             println!("Header was incorrect");
             return self.events.clone();
         }
 
-        self.ro_data = self.program[64..64 + self.get_starting_offset()].to_vec();
-        self.pc = 64 + self.get_starting_offset();
+        self.read_only_data = self.program
+            [PIE_HEADER_LENGTH..PIE_HEADER_LENGTH + self.get_starting_offset()]
+            .to_vec();
+        self.program_counter = PIE_HEADER_LENGTH + self.get_starting_offset();
 
         let mut is_done = None;
         while is_done.is_none() {
             is_done = self.execute_instruction();
         }
 
-        self.events.push(VMEvent {
-            event: VMEventType::GracefulStop {
+        self.events.push(VMEvent::now(
+            VMEventType::GracefulStop {
                 code: is_done.unwrap(),
             },
-            at: Utc::now(),
-            application_id: self.id.clone(),
-        });
+            self.id.clone(),
+        ));
 
         self.events.clone()
     }
@@ -94,156 +81,23 @@ impl VM {
         self.execute_instruction();
     }
 
-    fn execute_instruction(&mut self) -> Option<u32> {
-        if self.pc >= self.program.len() {
-            return Some(1);
-        }
-
-        let opcode = self.decode_opcode();
-        match opcode {
-            Opcode::HLT => {
-                println!("HLT encountered");
-                return Some(0);
-            }
-            Opcode::LOAD => {
-                let register = self.next_8_bits() as usize;
-                let number = self.next_16_bits() as u32;
-                self.registers[register] = number as i32;
-            }
-            Opcode::ADD => {
-                let register1 = self.registers[self.next_8_bits() as usize];
-                let register2 = self.registers[self.next_8_bits() as usize];
-                self.registers[self.next_8_bits() as usize] = register1 + register2;
-            }
-            Opcode::SUB => {
-                let register1 = self.registers[self.next_8_bits() as usize];
-                let register2 = self.registers[self.next_8_bits() as usize];
-                self.registers[self.next_8_bits() as usize] = register1 - register2;
-            }
-            Opcode::MUL => {
-                let register1 = self.registers[self.next_8_bits() as usize];
-                let register2 = self.registers[self.next_8_bits() as usize];
-                self.registers[self.next_8_bits() as usize] = register1 * register2;
-            }
-            Opcode::DIV => {
-                let register1 = self.registers[self.next_8_bits() as usize];
-                let register2 = self.registers[self.next_8_bits() as usize];
-                self.registers[self.next_8_bits() as usize] = register1 / register2;
-                self.remainder = (register1 % register2) as u32
-            }
-            Opcode::JMP => {
-                let target = self.registers[self.next_8_bits() as usize];
-                self.pc = 64 + target as usize + self.get_starting_offset();
-            }
-            Opcode::JMPF => {
-                let value = self.registers[self.next_8_bits() as usize];
-                self.pc += value as usize;
-            }
-            Opcode::JMPB => {
-                let value = self.registers[self.next_8_bits() as usize];
-                self.pc -= value as usize;
-            }
-            Opcode::EQ => {
-                let register1 = self.registers[self.next_8_bits() as usize];
-                let register2 = self.registers[self.next_8_bits() as usize];
-                self.equal_flag = register1 == register2;
-                self.next_8_bits();
-            }
-            Opcode::NEQ => {
-                let register1 = self.registers[self.next_8_bits() as usize];
-                let register2 = self.registers[self.next_8_bits() as usize];
-                self.equal_flag = register1 != register2;
-                self.next_8_bits();
-            }
-            Opcode::GT => {
-                let register1 = self.registers[self.next_8_bits() as usize];
-                let register2 = self.registers[self.next_8_bits() as usize];
-                self.equal_flag = register1 > register2;
-                self.next_8_bits();
-            }
-            Opcode::LT => {
-                let register1 = self.registers[self.next_8_bits() as usize];
-                let register2 = self.registers[self.next_8_bits() as usize];
-                self.equal_flag = register1 < register2;
-                self.next_8_bits();
-            }
-            Opcode::GTQ => {
-                let register1 = self.registers[self.next_8_bits() as usize];
-                let register2 = self.registers[self.next_8_bits() as usize];
-                self.equal_flag = register1 >= register2;
-                self.next_8_bits();
-            }
-            Opcode::LTQ => {
-                let register1 = self.registers[self.next_8_bits() as usize];
-                let register2 = self.registers[self.next_8_bits() as usize];
-                self.equal_flag = register1 <= register2;
-                self.next_8_bits();
-            }
-            Opcode::JEQ => {
-                let register = self.next_8_bits() as usize;
-                let target = self.registers[register];
-                if self.equal_flag {
-                    self.pc = 64 + target as usize + self.get_starting_offset();
-                }
-            }
-            Opcode::ALOC => {
-                let register = self.next_8_bits() as usize;
-                let bytes = self.registers[register];
-                let new_end = self.heap.len() as i32 + bytes;
-                self.heap.resize(new_end as usize, 0);
-            }
-            Opcode::PRTS => {
-                let starting_offset = self.next_16_bits() as usize;
-                let mut ending_offset = starting_offset;
-                let slice = self.ro_data.as_slice();
-                while slice[ending_offset] != 0 {
-                    ending_offset += 1;
-                }
-                let result = std::str::from_utf8(&slice[starting_offset..ending_offset]);
-                match result {
-                    Ok(s) => {
-                        println!("{}", s);
-                    }
-                    Err(e) => {
-                        println!("Error decoding string for prts instruction: {:#?}", e)
-                    }
-                };
-            }
-            Opcode::SLP => {
-                let register = self.next_8_bits() as usize;
-                let milliseconds = self.registers[register];
-                thread::sleep(Duration::from_millis(milliseconds as u64));
-            }
-            Opcode::SLPS => {
-                let register = self.next_8_bits() as usize;
-                let seconds = self.registers[register];
-                thread::sleep(Duration::from_secs(seconds as u64));
-            }
-            Opcode::IGL => {
-                println!("Illegal instruction encountered");
-                return Some(1);
-            }
-        }
-
-        None
-    }
-
     fn decode_opcode(&mut self) -> Opcode {
-        let opcode = Opcode::from(self.program[self.pc]);
+        let opcode = Opcode::from(self.program[self.program_counter]);
         // println!("{}: {} => {opcode:?}", self.pc, self.program[self.pc]);
-        self.pc += 1;
+        self.program_counter += 1;
         return opcode;
     }
 
     fn next_8_bits(&mut self) -> u8 {
-        let result = self.program[self.pc];
-        self.pc += 1;
+        let result = self.program[self.program_counter];
+        self.program_counter += 1;
         result
     }
 
     fn next_16_bits(&mut self) -> u16 {
-        let result = ((self.program[self.pc] as u16) << 8) | self.program[self.pc + 1] as u16;
-        self.pc += 2;
+        let result = ((self.program[self.program_counter] as u16) << 8)
+            | self.program[self.program_counter + 1] as u16;
+        self.program_counter += 2;
         result
     }
 
@@ -253,6 +107,12 @@ impl VM {
 
     pub fn add_bytes(&mut self, mut b: Vec<u8>) {
         self.program.append(&mut b);
+    }
+
+    pub fn set_program(&mut self, prog: Vec<u8>, ro: Vec<u8>) {
+        self.read_only_data = ro.clone();
+        self.program = Self::prepend_header(prog, ro);
+        self.program_counter = PIE_HEADER_LENGTH + self.get_starting_offset();
     }
 
     fn verify_header(&self) -> bool {
@@ -287,12 +147,6 @@ impl VM {
         prepension.append(&mut b);
         prepension
     }
-
-    pub fn set_program(&mut self, prog: Vec<u8>, ro: Vec<u8>) {
-        self.ro_data = ro.clone();
-        self.program = Self::prepend_header(prog, ro);
-        self.pc = 64 + self.get_starting_offset();
-    }
 }
 
 #[cfg(test)]
@@ -314,7 +168,7 @@ mod test {
             test_vm.program = vec![0];
             test_vm.program = VM::prepend_header(test_vm.program, Vec::new());
             test_vm.run();
-            assert_eq!(test_vm.pc, 65);
+            assert_eq!(test_vm.program_counter, PIE_HEADER_LENGTH + 1);
         }
 
         #[test]
@@ -322,7 +176,7 @@ mod test {
             let mut test_vm = VM::new();
             test_vm.set_program(vec![200], Vec::new());
             test_vm.run();
-            assert_eq!(test_vm.pc, 65);
+            assert_eq!(test_vm.program_counter, PIE_HEADER_LENGTH + 1);
         }
 
         #[test]
@@ -387,7 +241,7 @@ mod test {
                 test_vm.registers[0] = 5;
                 test_vm.set_program(vec![6, 0], Vec::new());
                 test_vm.run_once();
-                assert_eq!(test_vm.pc, 69);
+                assert_eq!(test_vm.program_counter, PIE_HEADER_LENGTH + 5);
             }
 
             #[test]
@@ -396,7 +250,7 @@ mod test {
                 test_vm.registers[0] = 2;
                 test_vm.set_program(vec![7, 0], Vec::new());
                 test_vm.run_once();
-                assert_eq!(test_vm.pc, 68);
+                assert_eq!(test_vm.program_counter, PIE_HEADER_LENGTH + 4);
             }
 
             #[test]
@@ -405,7 +259,7 @@ mod test {
                 test_vm.registers[0] = 2;
                 test_vm.set_program(vec![8, 0], Vec::new());
                 test_vm.run_once();
-                assert_eq!(test_vm.pc, 64);
+                assert_eq!(test_vm.program_counter, PIE_HEADER_LENGTH);
             }
         }
 
@@ -509,10 +363,10 @@ mod test {
                 test_vm.equal_flag = true;
                 test_vm.set_program(vec![15, 0, 0, 0, 15, 0], Vec::new());
                 test_vm.run_once();
-                assert_eq!(test_vm.pc, 68);
+                assert_eq!(test_vm.program_counter, PIE_HEADER_LENGTH + 4);
                 test_vm.equal_flag = false;
                 test_vm.run_once();
-                assert_eq!(test_vm.pc, 70);
+                assert_eq!(test_vm.program_counter, PIE_HEADER_LENGTH + 6);
             }
         }
 
@@ -522,7 +376,7 @@ mod test {
             test_vm.registers[0] = 1024;
             test_vm.set_program(vec![16, 0, 0, 0], Vec::new());
             test_vm.run_once();
-            assert_eq!(test_vm.heap.len(), 1024);
+            assert_eq!(test_vm.memory_heap.len(), 1024);
         }
 
         #[test]
@@ -533,6 +387,8 @@ mod test {
         }
 
         mod time {
+            use chrono::Utc;
+
             use super::*;
 
             #[test]

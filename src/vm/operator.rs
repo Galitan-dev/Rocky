@@ -1,0 +1,128 @@
+use std::{thread, time::Duration};
+
+use crate::{assembler::PIE_HEADER_LENGTH, instruction::Opcode};
+
+use super::VM;
+
+pub trait Operator {
+    fn execute_instruction(&mut self) -> Option<u32>;
+    fn calculate<F: FnOnce(i32, i32) -> (i32, Option<u32>)>(&mut self, op: F);
+    fn compare<F: FnOnce(i32, i32) -> bool>(&mut self, comparator: F);
+    fn sleep(&mut self, unit: i32);
+    fn print(&mut self);
+    fn jump<F: FnOnce(usize, usize, usize, bool) -> usize>(&mut self, jump: F);
+    fn aloc(&mut self);
+    fn load(&mut self);
+}
+
+impl Operator for VM {
+    fn execute_instruction(&mut self) -> Option<u32> {
+        if self.program_counter >= self.program.len() {
+            return Some(1);
+        }
+
+        let decoded_opcode = self.decode_opcode();
+        match decoded_opcode {
+            Opcode::HLT => {
+                println!("HLT encountered");
+                return Some(0);
+            }
+            Opcode::LOAD => self.load(),
+            Opcode::ADD => self.calculate(|a, b| (a + b, None)),
+            Opcode::SUB => self.calculate(|a, b| (a - b, None)),
+            Opcode::MUL => self.calculate(|a, b| (a * b, None)),
+            Opcode::DIV => self.calculate(|a, b| (a / b, Some((a % b) as u32))),
+            Opcode::JMP => self.jump(|target, offset, _, _| PIE_HEADER_LENGTH + target + offset),
+            Opcode::JMPF => self.jump(|target, _, current, _| current + target),
+            Opcode::JMPB => self.jump(|target, _, current, _| current - target),
+            Opcode::JEQ => self.jump(|target, offset, current, equal_flag| {
+                if equal_flag {
+                    PIE_HEADER_LENGTH + target + offset
+                } else {
+                    current
+                }
+            }),
+            Opcode::EQ => self.compare(|a, b| a == b),
+            Opcode::NEQ => self.compare(|a, b| a != b),
+            Opcode::GT => self.compare(|a, b| a > b),
+            Opcode::LT => self.compare(|a, b| a < b),
+            Opcode::GTQ => self.compare(|a, b| a >= b),
+            Opcode::LTQ => self.compare(|a, b| a <= b),
+            Opcode::ALOC => self.aloc(),
+            Opcode::PRTS => self.print(),
+            Opcode::SLP => self.sleep(1),
+            Opcode::SLPS => self.sleep(1000),
+            Opcode::IGL => {
+                println!("Illegal instruction encountered");
+                return Some(1);
+            }
+        }
+
+        None
+    }
+
+    fn calculate<F: FnOnce(i32, i32) -> (i32, Option<u32>)>(&mut self, op: F) {
+        let register1 = self.registers[self.next_8_bits() as usize];
+        let register2 = self.registers[self.next_8_bits() as usize];
+        let (result, remainder) = op(register1, register2);
+        self.registers[self.next_8_bits() as usize] = result;
+        if let Some(remainder) = remainder {
+            self.remainder = remainder
+        }
+    }
+
+    fn compare<F: FnOnce(i32, i32) -> bool>(&mut self, comparator: F) {
+        let register1 = self.registers[self.next_8_bits() as usize];
+        let register2 = self.registers[self.next_8_bits() as usize];
+        let equal_flag = comparator(register1, register2);
+        self.equal_flag = equal_flag;
+        self.next_8_bits();
+    }
+
+    fn sleep(&mut self, unit: i32) {
+        let register = self.next_8_bits() as usize;
+        let milliseconds = self.registers[register] * unit;
+        thread::sleep(Duration::from_millis(milliseconds as u64));
+    }
+
+    fn print(&mut self) {
+        let starting_offset = self.next_16_bits() as usize;
+        let mut ending_offset = starting_offset;
+        let slice = self.read_only_data.as_slice();
+        while slice[ending_offset] != 0 {
+            ending_offset += 1;
+        }
+        let result = std::str::from_utf8(&slice[starting_offset..ending_offset]);
+        match result {
+            Ok(s) => {
+                println!("{}", s);
+            }
+            Err(e) => {
+                println!("Error decoding string for prts instruction: {:#?}", e)
+            }
+        };
+    }
+
+    fn jump<F: FnOnce(usize, usize, usize, bool) -> usize>(&mut self, jump: F) {
+        let value = self.registers[self.next_8_bits() as usize];
+        self.program_counter = jump(
+            value as usize,
+            self.get_starting_offset(),
+            self.program_counter,
+            self.equal_flag,
+        );
+    }
+
+    fn aloc(&mut self) {
+        let register = self.next_8_bits() as usize;
+        let bytes = self.registers[register];
+        let new_end = self.memory_heap.len() as i32 + bytes;
+        self.memory_heap.resize(new_end as usize, 0);
+    }
+
+    fn load(&mut self) {
+        let register = self.next_8_bits() as usize;
+        let number = self.next_16_bits() as u32;
+        self.registers[register] = number as i32;
+    }
+}

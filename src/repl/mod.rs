@@ -150,7 +150,7 @@ impl REPL {
 
     fn clear_program(&mut self, _args: &[&str]) {
         self.vm.program.clear();
-        self.vm.pc = 0;
+        self.vm.program_counter = 0;
     }
 
     fn clear_registers(&mut self, _args: &[&str]) {
