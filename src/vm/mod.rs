@@ -8,10 +8,12 @@ use uuid::Uuid;
 
 use self::{
     events::{VMEvent, VMEventType},
+    memory::MemoryHeap,
     operator::Operator,
 };
 
 pub mod events;
+pub mod memory;
 pub mod operator;
 #[cfg(test)]
 pub mod tests;
@@ -23,7 +25,7 @@ pub struct VM {
     pub program: Vec<u8>,
     pub read_only_data: Vec<u8>,
     pub logical_cores: usize,
-    memory_heap: Vec<u8>,
+    pub memory_heap: MemoryHeap,
     remainder: u32,
     equal_flag: bool,
     id: Uuid,
@@ -39,7 +41,7 @@ impl VM {
             program_counter: 0,
             program: Vec::new(),
             read_only_data: Vec::new(),
-            memory_heap: Vec::new(),
+            memory_heap: MemoryHeap::new(0),
             events: Vec::new(),
             id: Uuid::new_v4(),
             logical_cores: num_cpus::get(),
@@ -101,6 +103,16 @@ impl VM {
             | self.program[self.program_counter + 1] as u16;
         self.program_counter += 2;
         result
+    }
+
+    fn read_data(&mut self) -> Result<&str, std::str::Utf8Error> {
+        let starting_offset = self.next_16_bits() as usize;
+        let mut ending_offset = starting_offset;
+        let slice = self.read_only_data.as_slice();
+        while slice[ending_offset] != 0 {
+            ending_offset += 1;
+        }
+        std::str::from_utf8(&slice[starting_offset..ending_offset])
     }
 
     pub fn add_byte(&mut self, byte: u8) {

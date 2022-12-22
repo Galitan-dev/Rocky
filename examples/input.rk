@@ -1,0 +1,10 @@
+.data
+prompt_age: .asciiz "Enter your age: "
+prompt_firstname: .asciiz "Enter your firstname: "
+prompt_lastname: .asciiz "Enter your lastname: "
+.code
+load $0 #256
+aloc $0
+aski $0 @prompt_age
+asks $1 @prompt_firstname
+asks $2 @prompt_lastname

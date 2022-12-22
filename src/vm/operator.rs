@@ -1,4 +1,10 @@
-use std::{thread, time::Duration};
+use std::{
+    fmt::Debug,
+    io::{self, stdout, Write},
+    str::FromStr,
+    thread,
+    time::Duration,
+};
 
 use crate::{assembler::PIE_HEADER_LENGTH, instruction::Opcode};
 
@@ -11,8 +17,12 @@ pub trait Operator {
     fn sleep(&mut self, unit: i32);
     fn print(&mut self);
     fn jump<F: FnOnce(usize, usize, usize, bool) -> usize>(&mut self, jump: F);
-    fn aloc(&mut self);
+    fn alloc(&mut self);
     fn load(&mut self);
+    fn ask<T>(&mut self) -> Option<T>
+    where
+        T: FromStr,
+        T::Err: Debug;
 }
 
 impl Operator for VM {
@@ -48,10 +58,24 @@ impl Operator for VM {
             Opcode::LT => self.compare(|a, b| a < b),
             Opcode::GTQ => self.compare(|a, b| a >= b),
             Opcode::LTQ => self.compare(|a, b| a <= b),
-            Opcode::ALOC => self.aloc(),
+            Opcode::ALOC => self.alloc(),
             Opcode::PRTS => self.print(),
             Opcode::SLP => self.sleep(1),
             Opcode::SLPS => self.sleep(1000),
+            Opcode::ASKI => {
+                let register = self.next_8_bits() as usize;
+
+                if let Some(integer) = self.ask() {
+                    self.registers[register] = integer;
+                }
+            }
+            Opcode::ASKS => {
+                let register = self.next_8_bits() as usize;
+
+                if let Some(string) = self.ask::<String>() {
+                    self.registers[register] = self.memory_heap.add(string.as_bytes().to_vec()) as i32;
+                }
+            }
             Opcode::IGL => {
                 println!("Illegal instruction encountered");
                 return Some(1);
@@ -85,21 +109,48 @@ impl Operator for VM {
         thread::sleep(Duration::from_millis(milliseconds as u64));
     }
 
-    fn print(&mut self) {
-        let starting_offset = self.next_16_bits() as usize;
-        let mut ending_offset = starting_offset;
-        let slice = self.read_only_data.as_slice();
-        while slice[ending_offset] != 0 {
-            ending_offset += 1;
-        }
-        let result = std::str::from_utf8(&slice[starting_offset..ending_offset]);
-        match result {
-            Ok(s) => {
-                println!("{}", s);
-            }
+    fn ask<T>(&mut self) -> Option<T>
+    where
+        T: FromStr,
+        T::Err: Debug,
+    {
+        let prompt: &str;
+        match self.read_data() {
+            Ok(s) => prompt = s,
             Err(e) => {
-                println!("Error decoding string for prts instruction: {:#?}", e)
+                println!("Error decoding string for prts instruction: {e:#?}");
+                return None;
             }
+        };
+
+        print!("{prompt}");
+        if let Err(e) = stdout().flush() {
+            println!("Error flusing stdout: {e:#?}");
+            return None;
+        }
+
+        let mut user_input = String::new();
+        let stdin = io::stdin();
+        if let Err(e) = stdin.read_line(&mut user_input) {
+            println!("Error reading user input: {e:#?}");
+            return None;
+        }
+
+        user_input = user_input[0..user_input.len() - 1].to_string();
+
+        match user_input.parse::<T>() {
+            Ok(parsed) => Some(parsed),
+            Err(e) => {
+                println!("Error parsing user input: {e:#?}");
+                None
+            }
+        }
+    }
+
+    fn print(&mut self) {
+        match self.read_data() {
+            Ok(s) => println!("{s}"),
+            Err(e) => println!("Error decoding string for prts instruction: {:#?}", e),
         };
     }
 
@@ -113,11 +164,10 @@ impl Operator for VM {
         );
     }
 
-    fn aloc(&mut self) {
+    fn alloc(&mut self) {
         let register = self.next_8_bits() as usize;
         let bytes = self.registers[register];
-        let new_end = self.memory_heap.len() as i32 + bytes;
-        self.memory_heap.resize(new_end as usize, 0);
+        self.memory_heap.alloc(bytes as usize);
     }
 
     fn load(&mut self) {

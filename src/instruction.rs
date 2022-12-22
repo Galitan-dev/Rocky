@@ -20,6 +20,8 @@ pub enum Opcode {
     PRTS,
     SLP,
     SLPS,
+    ASKI,
+    ASKS,
     IGL,
 }
 
@@ -46,6 +48,8 @@ impl From<u8> for Opcode {
             17 => Opcode::PRTS,
             18 => Opcode::SLP,
             19 => Opcode::SLPS,
+            20 => Opcode::ASKI,
+            21 => Opcode::ASKS,
             _ => Opcode::IGL,
         }
     }
@@ -66,19 +70,16 @@ impl From<String> for Opcode {
             "eq" => Opcode::EQ,
             "neq" => Opcode::NEQ,
             "gtq" => Opcode::GTQ,
-            "gte" => Opcode::GTQ,
             "gt" => Opcode::GT,
             "ltq" => Opcode::LTQ,
-            "lte" => Opcode::LTQ,
             "lt" => Opcode::LT,
             "jeq" => Opcode::JEQ,
-            "jmpe" => Opcode::JEQ,
             "aloc" => Opcode::ALOC,
             "prts" => Opcode::PRTS,
             "slp" => Opcode::SLP,
-            "wait" => Opcode::SLP,
             "slps" => Opcode::SLPS,
-            "waits" => Opcode::SLP,
+            "aski" => Opcode::ASKI,
+            "asks" => Opcode::ASKS,
             _ => Opcode::IGL,
         }
     }

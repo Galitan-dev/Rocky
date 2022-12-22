@@ -1,8 +1,10 @@
 use nom::{
+    branch::alt,
     bytes::complete::tag,
     character::complete::{alphanumeric1, multispace1},
     combinator::{map, opt},
     error::VerboseError,
+    multi::many1,
     sequence::{delimited, terminated, tuple},
     IResult,
 };
@@ -11,18 +13,25 @@ use super::{utils::ws, Token};
 
 pub fn label_declaration<'a>(i: &'a str) -> IResult<&'a str, Token, VerboseError<&'a str>> {
     ws(map(
-        terminated(alphanumeric1, tuple((tag(":"), opt(multispace1)))),
-        |name: &str| Token::LabelDeclaration {
-            name: name.to_string(),
+        terminated(
+            many1(alt((alphanumeric1, tag("_")))),
+            tuple((tag(":"), opt(multispace1))),
+        ),
+        |name: Vec<&str>| Token::LabelDeclaration {
+            name: name.join(""),
         },
     ))(i)
 }
 
 pub fn label_usage<'a>(i: &'a str) -> IResult<&'a str, Token, VerboseError<&'a str>> {
     ws(map(
-        delimited(tag("@"), alphanumeric1, opt(multispace1)),
-        |name: &str| Token::LabelUsage {
-            name: name.to_string(),
+        delimited(
+            tag("@"),
+            many1(alt((alphanumeric1, tag("_")))),
+            opt(multispace1),
+        ),
+        |name: Vec<&str>| Token::LabelUsage {
+            name: name.join(""),
         },
     ))(i)
 }
