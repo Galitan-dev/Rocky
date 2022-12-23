@@ -10,22 +10,24 @@ mod examples {
 
     use super::*;
 
-    fn execute_hello_rk(c: &mut Criterion) {
-        let clos = || {
-            run_file(RunFileArgs {
-                num_threads: num_cpus::get(),
-                filename: "examples/hello.rk",
-            })
-        };
+    // too long
+    // fn execute_hello_rk(c: &mut Criterion) {
+    //     let clos = || {
+    //         run_file(RunFileArgs {
+    //             num_threads: num_cpus::get(),
+    //             filename: "examples/hello.rk",
+    //         })
+    //     };
 
-        c.bench_function("execute_hello_rk", move |b| b.iter(clos));
-    }
+    //     c.bench_function("execute_hello_rk", move |b| b.iter(clos));
+    // }
 
     fn execute_math_rk(c: &mut Criterion) {
         let clos = || {
             run_file(RunFileArgs {
                 num_threads: num_cpus::get(),
                 filename: "examples/math.rk",
+                debug: false,
             })
         };
         c.bench_function("execute_math_rk", move |b| b.iter(clos));
@@ -34,7 +36,7 @@ mod examples {
     criterion_group! {
         name = examples;
         config = Criterion::default();
-        targets = execute_math_rk, execute_hello_rk
+        targets = execute_math_rk
     }
 }
 

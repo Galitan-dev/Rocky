@@ -51,6 +51,7 @@ fn get_arguments<'a>(matches: &'a ArgMatches) -> Args<'a> {
                     None => num_cpus::get(),
                 },
                 filename: input_file,
+                debug: args.get_flag("debug"),
             }),
             None => Args::Repl(REPLArgs {
                 mode: {

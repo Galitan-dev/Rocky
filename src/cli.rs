@@ -14,6 +14,14 @@ pub fn cli() -> Command {
                 .required(false)
                 .index(1)
                 .value_name("INPUT_FILE"),
+            Arg::new("debug")
+                .help("Enable debug mode")
+                .required(false)
+                .long("debug")
+                .short('d')
+                .alias("verbose")
+                .short_alias('v')
+                .action(ArgAction::SetTrue),
             Arg::new("threads")
                 .help("Number of OS threads the VM will utilize")
                 .required(false)
@@ -76,6 +84,7 @@ pub struct REPLArgs {
 pub struct RunFileArgs<'a> {
     pub num_threads: usize,
     pub filename: &'a str,
+    pub debug: bool,
 }
 
 #[derive(Debug, Clone)]

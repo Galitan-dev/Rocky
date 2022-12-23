@@ -65,29 +65,30 @@ pub fn run_file(args: RunFileArgs) {
     match program {
         Ok(p) => {
             vm.add_bytes(p);
+
             let events = vm.run();
-            println!("--------------------------");
-            println!("VM Events");
-            println!("--------------------------");
-            for event in &events {
-                println!("{:#?}", event);
-            }
-            println!("--------------------------");
-            println!("Non-null Registers");
-            println!("--------------------------");
-            for (register, value) in vm.registers.iter().enumerate() {
-                if *value != 0 {
-                    println!("${register} = {value}");
+            if args.debug {
+                println!("--------------------------");
+                println!("VM Events");
+                println!("--------------------------");
+                for event in &events {
+                    println!("{:#?}", event);
+                }
+                println!("--------------------------");
+                println!("Non-null Registers");
+                println!("--------------------------");
+                for (register, value) in vm.registers.iter().enumerate() {
+                    if *value != 0 {
+                        println!("${register} = {value}");
+                    }
+                }
+                println!("--------------------------");
+                println!("Memory Heap as UTF-8 Strings");
+                println!("--------------------------");
+                for bytes in vm.memory_heap.into_iter() {
+                    println!("{}", std::str::from_utf8(&bytes).unwrap());
                 }
             }
-            println!("--------------------------");
-            println!("Memory Heap as UTF-8 Strings");
-            println!("--------------------------");
-            for bytes in vm.memory_heap.into_iter() {
-                println!("{}", std::str::from_utf8(&bytes).unwrap());
-            }
-
-            std::process::exit(0);
         }
         Err(errors) => {
             println!("Encountered {} assembler error(s):", errors.len());
