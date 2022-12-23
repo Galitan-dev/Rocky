@@ -6,6 +6,8 @@ use std::{
     time::Duration,
 };
 
+use byteorder::{LittleEndian, WriteBytesExt};
+
 use crate::{assembler::PIE_HEADER_LENGTH, instruction::Opcode};
 
 use super::VM;
@@ -63,17 +65,23 @@ impl Operator for VM {
             Opcode::SLP => self.sleep(1),
             Opcode::SLPS => self.sleep(1000),
             Opcode::ASKI => {
-                let register = self.next_8_bits() as usize;
+                if let Some(integer) = self.ask::<i32>() {
+                    let index = self.next_16_bits() as usize;
+                    let mut wtr = Vec::new();
+                    wtr.write_i32::<LittleEndian>(integer).unwrap();
 
-                if let Some(integer) = self.ask() {
-                    self.registers[register] = integer;
+                    self.memory_heap.edit(wtr, index);
+                } else {
+                    self.next_16_bits();
                 }
             }
             Opcode::ASKS => {
-                let register = self.next_8_bits() as usize;
-
                 if let Some(string) = self.ask::<String>() {
-                    self.registers[register] = self.memory_heap.add(string.as_bytes().to_vec()) as i32;
+                    let index = self.next_16_bits() as usize;
+
+                    self.memory_heap.edit(string.as_bytes().to_vec(), index);
+                } else {
+                    self.next_16_bits();
                 }
             }
             Opcode::IGL => {

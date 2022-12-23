@@ -2,16 +2,16 @@
 #[derive(Debug)]
 pub struct Symbol {
     name: String,
-    offset: u32,
+    index: usize,
     symbol_type: SymbolType,
 }
 
 impl Symbol {
-    pub fn new(name: String, symbol_type: SymbolType, offset: u32) -> Symbol {
+    pub fn new(name: String, symbol_type: SymbolType, index: usize) -> Symbol {
         Symbol {
             name,
             symbol_type,
-            offset,
+            index,
         }
     }
 }
@@ -37,10 +37,10 @@ impl SymbolTable {
         self.symbols.push(s);
     }
 
-    pub fn symbol_value(&self, s: &str) -> Option<u32> {
+    pub fn symbol_value(&self, s: &str) -> Option<usize> {
         for symbol in &self.symbols {
             if symbol.name == s {
-                return Some(symbol.offset);
+                return Some(symbol.index);
             }
         }
         None
@@ -55,10 +55,10 @@ impl SymbolTable {
         false
     }
 
-    pub fn set_symbol_offset(&mut self, s: &str, offset: u32) {
+    pub fn set_symbol_index(&mut self, s: &str, index: usize) {
         for symbol in &mut self.symbols {
             if symbol.name == s {
-                symbol.offset = offset
+                symbol.index = index
             }
         }
     }

@@ -39,6 +39,8 @@ mod examples {
 }
 
 mod arithmetic {
+    use rocky::vm::memory::MemoryHeap;
+
     use super::*;
 
     fn execute_add(c: &mut Criterion) {
@@ -46,7 +48,7 @@ mod arithmetic {
             let mut test_vm = VM::new();
             test_vm.registers[0] = 50;
             test_vm.registers[1] = 25;
-            test_vm.set_program(vec![2, 0, 1, 0], Vec::new());
+            test_vm.set_program(vec![2, 0, 1, 0], MemoryHeap::new(0));
             test_vm.run_once();
         };
 
@@ -58,7 +60,7 @@ mod arithmetic {
             let mut test_vm = VM::new();
             test_vm.registers[0] = 50;
             test_vm.registers[1] = 25;
-            test_vm.set_program(vec![3, 0, 1, 0], Vec::new());
+            test_vm.set_program(vec![3, 0, 1, 0], MemoryHeap::new(0));
             test_vm.run_once();
         };
 
@@ -70,7 +72,7 @@ mod arithmetic {
             let mut test_vm = VM::new();
             test_vm.registers[0] = 50;
             test_vm.registers[1] = 5;
-            test_vm.set_program(vec![4, 0, 1, 0], Vec::new());
+            test_vm.set_program(vec![4, 0, 1, 0], MemoryHeap::new(0));
             test_vm.run_once();
         };
 
@@ -82,7 +84,7 @@ mod arithmetic {
             let mut test_vm = VM::new();
             test_vm.registers[0] = 50;
             test_vm.registers[1] = 6;
-            test_vm.set_program(vec![5, 0, 1, 0], Vec::new());
+            test_vm.set_program(vec![5, 0, 1, 0], MemoryHeap::new(0));
             test_vm.run_once();
         };
 

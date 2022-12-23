@@ -112,10 +112,20 @@ impl AssemblerInstruction {
         self.operand1.is_some() || self.operand2.is_some() || self.operand3.is_some()
     }
 
-    pub fn string_constant(&self) -> Option<String> {
+    pub fn string_operand(&self) -> Option<String> {
         match &self.operand1 {
             Some(d) => match d {
                 Token::RkString { name } => Some(name.clone()),
+                _ => None,
+            },
+            None => None,
+        }
+    }
+
+    pub fn integer_operand(&self) -> Option<i32> {
+        match &self.operand1 {
+            Some(d) => match d {
+                Token::IntegerOperand { value } => Some(*value),
                 _ => None,
             },
             None => None,

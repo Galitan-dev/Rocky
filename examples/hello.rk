@@ -1,5 +1,5 @@
-.data
-hello: .asciiz "Hello World"
+.rodata
+hello: .str "Hello World"
 .code
 load $1 #10
 load $2 #0

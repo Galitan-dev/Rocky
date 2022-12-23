@@ -1,15 +1,15 @@
+.rodata
+prompt_age: .str "Enter your age: "
+prompt_firstname: .str "Enter your firstname: "
+prompt_lastname: .str "Enter your lastname: "
+
 .data
-prompt_age: .asciiz "Enter your age: "
-prompt_firstname: .asciiz "Enter your firstname: "
-prompt_lastname: .asciiz "Enter your lastname: "
-firstname: .word 0
-lastname: .word 0
+age: .int #0
+firstname: .str ""
+lastname: .str ""
+
 .code
-load $0 #256
-aloc $0
-la $0 @prompt_age 
-aski $1
-la $0 @prompt_age 
-firstname: asks $1
-la $0 @prompt_firstname
-lastname: asks $2
+aski @prompt_age @age
+asks @prompt_firstname @firstname 
+asks @prompt_lastname @lastname
+prts @firstname

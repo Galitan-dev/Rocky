@@ -1,7 +1,7 @@
 use super::{label_parser::label_usage, register_parser::register, utils::ws, Token};
 use nom::{
     branch::alt,
-    bytes::complete::{tag, take_until1},
+    bytes::complete::{tag, take_until},
     character::complete::digit1,
     combinator::map,
     error::VerboseError,
@@ -24,8 +24,8 @@ fn integer_operand<'a>(i: &'a str) -> IResult<&'a str, Token, VerboseError<&'a s
 fn rkstring<'a>(i: &'a str) -> IResult<&'a str, Token, VerboseError<&'a str>> {
     map(
         alt((
-            delimited(tag("'"), take_until1("'"), tag("'")),
-            delimited(tag("\""), take_until1("\""), tag("\"")),
+            delimited(tag("'"), take_until("'"), tag("'")),
+            delimited(tag("\""), take_until("\""), tag("\"")),
         )),
         |name: &str| Token::RkString {
             name: name.to_string(),
