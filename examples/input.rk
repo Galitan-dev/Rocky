@@ -2,9 +2,14 @@
 prompt_age: .asciiz "Enter your age: "
 prompt_firstname: .asciiz "Enter your firstname: "
 prompt_lastname: .asciiz "Enter your lastname: "
+firstname: .word 0
+lastname: .word 0
 .code
 load $0 #256
 aloc $0
-aski $0 @prompt_age
-asks $1 @prompt_firstname
-asks $2 @prompt_lastname
+la $0 @prompt_age 
+aski $1
+la $0 @prompt_age 
+firstname: asks $1
+la $0 @prompt_firstname
+lastname: asks $2

@@ -47,6 +47,12 @@ impl MemoryHeap {
 
     // This was requested twice because the first time chatgpt didn't think about resizing partition
     pub fn edit(&mut self, bytes: Vec<u8>, id: usize) {
+        if bytes.len() == self.get(id).len() {
+            let range = self.partitions[id].clone();
+            self.data.splice(range, bytes);
+            return;
+        }
+
         self.delete(self.partitions.get(id).unwrap().clone());
         let new_id = self.add(bytes);
         self.partitions[id] = self.partitions[new_id].clone();
@@ -138,6 +144,30 @@ mod tests {
         let bytes = vec![1, 2, 3];
         let id = memory_heap.add(bytes.clone());
         let new_bytes = vec![4, 5, 6];
+        memory_heap.edit(new_bytes.clone(), id);
+        println!("{memory_heap:?}");
+        assert_eq!(memory_heap.get(id), new_bytes);
+    }
+
+    #[test]
+    fn test_edit_bigger() {
+        let mut memory_heap = MemoryHeap::new(3);
+
+        let bytes = vec![1, 2, 3];
+        let id = memory_heap.add(bytes.clone());
+        let new_bytes = vec![4, 5, 6, 7];
+        memory_heap.edit(new_bytes.clone(), id);
+        println!("{memory_heap:?}");
+        assert_eq!(memory_heap.get(id), new_bytes);
+    }
+
+    #[test]
+    fn test_edit_smaller() {
+        let mut memory_heap = MemoryHeap::new(3);
+
+        let bytes = vec![1, 2, 3];
+        let id = memory_heap.add(bytes.clone());
+        let new_bytes = vec![4, 5];
         memory_heap.edit(new_bytes.clone(), id);
         println!("{memory_heap:?}");
         assert_eq!(memory_heap.get(id), new_bytes);
