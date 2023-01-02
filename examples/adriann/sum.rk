@@ -1,0 +1,12 @@
+.rodata
+number_prompt: .str "Chose a number: "
+.code
+aski @number_prompt $1
+load $2 #0
+load $3 #1
+load $4 #20
+load $5 #0
+add $5 $2 $5
+add $2 $3 $2
+ltq $2 $1 $0
+jeq $4
