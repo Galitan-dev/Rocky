@@ -61,6 +61,10 @@ impl Operator for VM {
             Opcode::LTQ => self.compare(|a, b| a <= b),
             Opcode::ALOC => self.alloc(),
             Opcode::PRTS => self.print(),
+            Opcode::PRTI => {
+                let register = self.registers[self.program_cursor.read_register_index().unwrap()];
+                println!("{register}");
+            },
             Opcode::SLP => self.sleep(1),
             Opcode::SLPS => self.sleep(1000),
             Opcode::ASKI => {
