@@ -1,0 +1,10 @@
+.rodata
+name_prompt: .str "What's your name ? "
+hello: .str "Hello "
+.data
+name: .str ""
+greeting: .str ""
+.code
+asks @name_prompt @name
+grps @hello @name @greeting
+prts @greeting

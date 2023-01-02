@@ -1,6 +1,6 @@
 use crate::{
     assembler::{PIE_HEADER_LENGTH, PIE_HEADER_PREFIX},
-    instruction::Opcode,
+    vm::cursor::ProgramCursor,
 };
 use byteorder::{LittleEndian, ReadBytesExt};
 use std::io::Cursor;
@@ -12,6 +12,7 @@ use self::{
     operator::Operator,
 };
 
+pub mod cursor;
 pub mod events;
 pub mod memory;
 pub mod operator;
@@ -21,8 +22,8 @@ pub mod tests;
 #[derive(Debug, Clone)]
 pub struct VM {
     pub registers: [i32; 32],
-    pub program_counter: usize,
     pub program: Vec<u8>,
+    pub program_cursor: Cursor<Vec<u8>>,
     pub logical_cores: usize,
     pub memory_heap: MemoryHeap,
     remainder: u32,
@@ -37,8 +38,8 @@ impl VM {
             registers: [0; 32],
             remainder: 0,
             equal_flag: false,
-            program_counter: 0,
             program: Vec::new(),
+            program_cursor: Cursor::new(Vec::new()),
             memory_heap: MemoryHeap::new(0),
             events: Vec::new(),
             id: Uuid::new_v4(),
@@ -62,7 +63,8 @@ impl VM {
             &mut Cursor::new(&self.program[PIE_HEADER_LENGTH..]),
             &mut Cursor::new(&self.program[PIE_HEADER_PREFIX.len()..PIE_HEADER_PREFIX.len() + 12]),
         );
-        self.program_counter = PIE_HEADER_LENGTH + self.get_starting_offset();
+        self.program_cursor
+            .set_position((PIE_HEADER_LENGTH + self.get_starting_offset()) as u64);
 
         let mut is_done = None;
         while is_done.is_none() {
@@ -84,46 +86,36 @@ impl VM {
         self.execute_instruction();
     }
 
-    fn decode_opcode(&mut self) -> Opcode {
-        let opcode = Opcode::from(self.program[self.program_counter]);
-        // println!(
-        //     "{}: {} => {opcode:?}",
-        //     self.program_counter, self.program[self.program_counter]
-        // );
-        self.program_counter += 1;
-        return opcode;
-    }
-
-    fn next_8_bits(&mut self) -> u8 {
-        let result = self.program[self.program_counter];
-        self.program_counter += 1;
-        result
-    }
-
-    fn next_16_bits(&mut self) -> u16 {
-        let result = ((self.program[self.program_counter] as u16) << 8)
-            | self.program[self.program_counter + 1] as u16;
-        self.program_counter += 2;
-        result
-    }
-
-    fn read_data(&mut self) -> Result<&str, std::str::Utf8Error> {
-        let index = self.next_16_bits() as usize;
-        std::str::from_utf8(&self.memory_heap.get_slice(index))
+    fn read_data(&mut self) -> Option<&str> {
+        if let Some(index) = self.program_cursor.next_16_bits() {
+            std::str::from_utf8(&self.memory_heap.get_slice(index as usize)).ok()
+        } else {
+            None
+        }
     }
 
     pub fn add_byte(&mut self, byte: u8) {
         self.program.push(byte);
+        self.update_program_cursor();
+    }
+
+    pub fn update_program_cursor(&mut self) {
+        let pos = self.program_cursor.position();
+        self.program_cursor = Cursor::new(self.program.clone());
+        self.program_cursor.set_position(pos);
     }
 
     pub fn add_bytes(&mut self, mut b: Vec<u8>) {
         self.program.append(&mut b);
+        self.update_program_cursor();
     }
 
     pub fn set_program(&mut self, prog: Vec<u8>, mem: MemoryHeap) {
         self.memory_heap = mem.clone();
         self.program = Self::prepend_header(prog, mem);
-        self.program_counter = PIE_HEADER_LENGTH + self.get_starting_offset();
+        self.update_program_cursor();
+        self.program_cursor
+            .set_position((PIE_HEADER_LENGTH + self.get_starting_offset()) as u64);
     }
 
     fn verify_header(&self) -> bool {

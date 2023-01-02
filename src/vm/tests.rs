@@ -12,10 +12,12 @@ mod opcode {
     #[test]
     fn test_hlt() {
         let mut test_vm = VM::new();
-        test_vm.program = vec![0];
-        test_vm.program = VM::prepend_header(test_vm.program, MemoryHeap::new(0));
+        test_vm.set_program(vec![0], MemoryHeap::new(0));
         test_vm.run();
-        assert_eq!(test_vm.program_counter, PIE_HEADER_LENGTH + 1);
+        assert_eq!(
+            test_vm.program_cursor.position() as usize,
+            PIE_HEADER_LENGTH + 1
+        );
     }
 
     #[test]
@@ -23,7 +25,10 @@ mod opcode {
         let mut test_vm = VM::new();
         test_vm.set_program(vec![200], MemoryHeap::new(0));
         test_vm.run();
-        assert_eq!(test_vm.program_counter, PIE_HEADER_LENGTH + 1);
+        assert_eq!(
+            test_vm.program_cursor.position() as usize,
+            PIE_HEADER_LENGTH + 1
+        );
     }
 
     #[test]
@@ -88,7 +93,10 @@ mod opcode {
             test_vm.registers[0] = 5;
             test_vm.set_program(vec![6, 0], MemoryHeap::new(0));
             test_vm.run_once();
-            assert_eq!(test_vm.program_counter, PIE_HEADER_LENGTH + 5);
+            assert_eq!(
+                test_vm.program_cursor.position() as usize,
+                PIE_HEADER_LENGTH + 5
+            );
         }
 
         #[test]
@@ -97,7 +105,10 @@ mod opcode {
             test_vm.registers[0] = 2;
             test_vm.set_program(vec![7, 0], MemoryHeap::new(0));
             test_vm.run_once();
-            assert_eq!(test_vm.program_counter, PIE_HEADER_LENGTH + 4);
+            assert_eq!(
+                test_vm.program_cursor.position() as usize,
+                PIE_HEADER_LENGTH + 4
+            );
         }
 
         #[test]
@@ -106,7 +117,10 @@ mod opcode {
             test_vm.registers[0] = 2;
             test_vm.set_program(vec![8, 0], MemoryHeap::new(0));
             test_vm.run_once();
-            assert_eq!(test_vm.program_counter, PIE_HEADER_LENGTH);
+            assert_eq!(
+                test_vm.program_cursor.position() as usize,
+                PIE_HEADER_LENGTH
+            );
         }
     }
 
@@ -222,10 +236,16 @@ mod opcode {
             test_vm.equal_flag = true;
             test_vm.set_program(vec![15, 0, 0, 0, 15, 0], MemoryHeap::new(0));
             test_vm.run_once();
-            assert_eq!(test_vm.program_counter, PIE_HEADER_LENGTH + 4);
+            assert_eq!(
+                test_vm.program_cursor.position() as usize,
+                PIE_HEADER_LENGTH + 4
+            );
             test_vm.equal_flag = false;
             test_vm.run_once();
-            assert_eq!(test_vm.program_counter, PIE_HEADER_LENGTH + 6);
+            assert_eq!(
+                test_vm.program_cursor.position() as usize,
+                PIE_HEADER_LENGTH + 6
+            );
         }
     }
 

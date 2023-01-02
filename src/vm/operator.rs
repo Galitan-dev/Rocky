@@ -10,7 +10,7 @@ use byteorder::{LittleEndian, WriteBytesExt};
 
 use crate::{assembler::PIE_HEADER_LENGTH, instruction::Opcode};
 
-use super::VM;
+use super::{cursor::ProgramCursor, VM};
 
 pub trait Operator {
     fn execute_instruction(&mut self) -> Option<u32>;
@@ -29,12 +29,13 @@ pub trait Operator {
 
 impl Operator for VM {
     fn execute_instruction(&mut self) -> Option<u32> {
-        if self.program_counter >= self.program.len() {
+        let opcode = self.program_cursor.read_opcode();
+        if opcode.is_none() {
             return Some(1);
         }
 
-        let decoded_opcode = self.decode_opcode();
-        match decoded_opcode {
+        let opcode = opcode.unwrap();
+        match opcode {
             Opcode::HLT => {
                 println!("HLT encountered");
                 return Some(0);
@@ -66,23 +67,41 @@ impl Operator for VM {
             Opcode::SLPS => self.sleep(1000),
             Opcode::ASKI => {
                 if let Some(integer) = self.ask::<i32>() {
-                    let index = self.next_16_bits() as usize;
+                    let index = self.program_cursor.read_index().unwrap();
                     let mut wtr = Vec::new();
                     wtr.write_i32::<LittleEndian>(integer).unwrap();
 
                     self.memory_heap.edit(wtr, index);
                 } else {
-                    self.next_16_bits();
+                    self.program_cursor.next_16_bits();
                 }
             }
             Opcode::ASKS => {
                 if let Some(string) = self.ask::<String>() {
-                    let index = self.next_16_bits() as usize;
+                    let index = self.program_cursor.read_index().unwrap();
 
                     self.memory_heap.edit(string.as_bytes().to_vec(), index);
                 } else {
-                    self.next_16_bits();
+                    self.program_cursor.next_16_bits();
                 }
+            }
+            Opcode::GRPS => {
+                let mut cursor = self.program_cursor.clone();
+                let left = std::str::from_utf8(
+                    &self.memory_heap.get_slice(cursor.read_index().unwrap()),
+                )
+                .unwrap();
+                let right = std::str::from_utf8(
+                    &self.memory_heap.get_slice(cursor.read_index().unwrap()),
+                )
+                .unwrap();
+                let id = cursor.read_index().unwrap();
+                self.program_cursor.set_position(cursor.position());
+
+                let combined = [left, right].join("");
+
+                self.memory_heap
+                    .edit(combined.as_bytes().to_vec(), id as usize);
             }
             Opcode::IGL => {
                 println!("Illegal instruction encountered");
@@ -94,25 +113,25 @@ impl Operator for VM {
     }
 
     fn calculate<F: FnOnce(i32, i32) -> (i32, Option<u32>)>(&mut self, op: F) {
-        let register1 = self.registers[self.next_8_bits() as usize];
-        let register2 = self.registers[self.next_8_bits() as usize];
+        let register1 = self.registers[self.program_cursor.read_register_index().unwrap()];
+        let register2 = self.registers[self.program_cursor.read_register_index().unwrap()];
         let (result, remainder) = op(register1, register2);
-        self.registers[self.next_8_bits() as usize] = result;
+        self.registers[self.program_cursor.read_register_index().unwrap()] = result;
         if let Some(remainder) = remainder {
             self.remainder = remainder
         }
     }
 
     fn compare<F: FnOnce(i32, i32) -> bool>(&mut self, comparator: F) {
-        let register1 = self.registers[self.next_8_bits() as usize];
-        let register2 = self.registers[self.next_8_bits() as usize];
+        let register1 = self.registers[self.program_cursor.read_register_index().unwrap()];
+        let register2 = self.registers[self.program_cursor.read_register_index().unwrap()];
         let equal_flag = comparator(register1, register2);
         self.equal_flag = equal_flag;
-        self.next_8_bits();
+        self.program_cursor.next_8_bits();
     }
 
     fn sleep(&mut self, unit: i32) {
-        let register = self.next_8_bits() as usize;
+        let register = self.program_cursor.read_register_index().unwrap();
         let milliseconds = self.registers[register] * unit;
         thread::sleep(Duration::from_millis(milliseconds as u64));
     }
@@ -124,9 +143,9 @@ impl Operator for VM {
     {
         let prompt: &str;
         match self.read_data() {
-            Ok(s) => prompt = s,
-            Err(e) => {
-                println!("Error decoding string for prts instruction: {e:#?}");
+            Some(s) => prompt = s,
+            None => {
+                println!("Error decoding string for prts instruction");
                 return None;
             }
         };
@@ -157,30 +176,30 @@ impl Operator for VM {
 
     fn print(&mut self) {
         match self.read_data() {
-            Ok(s) => println!("{s}"),
-            Err(e) => println!("Error decoding string for prts instruction: {:#?}", e),
+            Some(s) => println!("{s}"),
+            None => println!("Error decoding string for prts instruction"),
         };
     }
 
     fn jump<F: FnOnce(usize, usize, usize, bool) -> usize>(&mut self, jump: F) {
-        let value = self.registers[self.next_8_bits() as usize];
-        self.program_counter = jump(
+        let value = self.registers[self.program_cursor.read_register_index().unwrap()];
+        self.program_cursor.set_position(jump(
             value as usize,
             self.get_starting_offset(),
-            self.program_counter,
+            self.program_cursor.position() as usize,
             self.equal_flag,
-        );
+        ) as u64);
     }
 
     fn alloc(&mut self) {
-        let register = self.next_8_bits() as usize;
+        let register = self.program_cursor.read_register_index().unwrap();
         let bytes = self.registers[register];
         self.memory_heap.alloc(bytes as usize);
     }
 
     fn load(&mut self) {
-        let register = self.next_8_bits() as usize;
-        let number = self.next_16_bits() as u32;
+        let register = self.program_cursor.read_register_index().unwrap();
+        let number = self.program_cursor.next_16_bits().unwrap() as u32;
         self.registers[register] = number as i32;
     }
 }
