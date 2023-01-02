@@ -87,14 +87,12 @@ impl Operator for VM {
             }
             Opcode::GRPS => {
                 let mut cursor = self.program_cursor.clone();
-                let left = std::str::from_utf8(
-                    &self.memory_heap.get_slice(cursor.read_index().unwrap()),
-                )
-                .unwrap();
-                let right = std::str::from_utf8(
-                    &self.memory_heap.get_slice(cursor.read_index().unwrap()),
-                )
-                .unwrap();
+                let left =
+                    std::str::from_utf8(&self.memory_heap.get_slice(cursor.read_index().unwrap()))
+                        .unwrap();
+                let right =
+                    std::str::from_utf8(&self.memory_heap.get_slice(cursor.read_index().unwrap()))
+                        .unwrap();
                 let id = cursor.read_index().unwrap();
                 self.program_cursor.set_position(cursor.position());
 
@@ -102,6 +100,30 @@ impl Operator for VM {
 
                 self.memory_heap
                     .edit(combined.as_bytes().to_vec(), id as usize);
+            }
+            Opcode::EQS => {
+                let mut cursor = self.program_cursor.clone();
+                let left =
+                    std::str::from_utf8(&self.memory_heap.get_slice(cursor.read_index().unwrap()))
+                        .unwrap();
+                let right =
+                    std::str::from_utf8(&self.memory_heap.get_slice(cursor.read_index().unwrap()))
+                        .unwrap();
+                self.program_cursor.set_position(cursor.position());
+
+                self.equal_flag = left == right
+            }
+            Opcode::NEQS => {
+                let mut cursor = self.program_cursor.clone();
+                let left =
+                    std::str::from_utf8(&self.memory_heap.get_slice(cursor.read_index().unwrap()))
+                        .unwrap();
+                let right =
+                    std::str::from_utf8(&self.memory_heap.get_slice(cursor.read_index().unwrap()))
+                        .unwrap();
+                self.program_cursor.set_position(cursor.position());
+
+                self.equal_flag = left != right
             }
             Opcode::IGL => {
                 println!("Illegal instruction encountered");

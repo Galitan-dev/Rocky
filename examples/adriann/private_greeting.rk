@@ -1,9 +1,17 @@
 .rodata
 name_prompt: .str "What's your name ? "
+alice: .str "Alice"
+bob: .str "Bob"
 .data
 name: .str ""
 greeting: .str "Hello "
 .code
+load $0 #27
+load $1 #34
 asks @name_prompt @name
+eqs @name @alice
+jeq $0
+neqs @name @bob
+jeq $1
 grps @greeting @name @greeting
 prts @greeting

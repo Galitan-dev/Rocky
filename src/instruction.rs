@@ -23,6 +23,8 @@ pub enum Opcode {
     ASKI,
     ASKS,
     GRPS,
+    EQS,
+    NEQS,
     IGL,
 }
 
@@ -52,6 +54,8 @@ impl From<u8> for Opcode {
             20 => Opcode::ASKI,
             21 => Opcode::ASKS,
             22 => Opcode::GRPS,
+            23 => Opcode::EQS,
+            24 => Opcode::NEQS,
             _ => Opcode::IGL,
         }
     }
@@ -83,6 +87,8 @@ impl From<String> for Opcode {
             "aski" => Opcode::ASKI,
             "asks" => Opcode::ASKS,
             "grps" => Opcode::GRPS,
+            "eqs" => Opcode::EQS,
+            "neqs" => Opcode::NEQS,
             _ => Opcode::IGL,
         }
     }
